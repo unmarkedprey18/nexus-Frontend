@@ -1,33 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet, Switch,
-  Text,
-  TouchableOpacity,
-  View,
+  View, Text, StyleSheet, Switch, ScrollView,
+  TouchableOpacity, ActivityIndicator, Platform, Alert,
 } from 'react-native';
-import api from '../services/api';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../store/useTheme';
-
-// Configure how notifications appear when app is open
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-  shouldShowAlert: true,
-  shouldPlaySound: true,
-  shouldSetBadge: false,
-  shouldShowBanner: true,
-  shouldShowList: true,
-  priority: Notifications.AndroidNotificationPriority.HIGH,
-}),
-});
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import api from '../services/api';
 
 export default function NotificationsScreen() {
   const router = useRouter();
@@ -42,14 +24,12 @@ export default function NotificationsScreen() {
     weeklySummary: false,
   });
 
-  // Reload settings every time screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadSettings();
     }, [])
   );
 
-  // Register for push notifications when screen loads
   useEffect(() => {
     registerForPushNotifications();
   }, []);
@@ -58,35 +38,30 @@ export default function NotificationsScreen() {
     try {
       setFetching(true);
       const saved = await AsyncStorage.getItem('notificationSettings');
-      if (saved) {
-        setSettings(JSON.parse(saved));
-      }
+      if (saved) setSettings(JSON.parse(saved));
     } catch (err) {
-      // Keep defaults if load fails
+      // Keep defaults
     } finally {
       setFetching(false);
     }
   };
 
-  // Register device for push notifications
   const registerForPushNotifications = async () => {
     try {
-      // Only works on real devices not simulators
       if (!Device.isDevice) return;
 
-      // Check existing permission
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      const existingPermission = await Notifications.getPermissionsAsync();
+      let finalStatus = (existingPermission as any).status ||
+        ((existingPermission as any).granted ? 'granted' : 'denied');
 
-      // Ask for permission if not granted
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+      if (finalStatus !== 'granted') {
+        const newPermission = await Notifications.requestPermissionsAsync();
+        finalStatus = (newPermission as any).status ||
+          ((newPermission as any).granted ? 'granted' : 'denied');
       }
 
       if (finalStatus !== 'granted') return;
 
-      // Android needs a notification channel
       if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
           name: 'Nexus Notifications',
@@ -96,30 +71,24 @@ export default function NotificationsScreen() {
         });
       }
 
-      // Get the push token for this device
       const tokenData = await Notifications.getExpoPushTokenAsync();
       const pushToken = tokenData.data;
-
-      // Save token locally
       await AsyncStorage.setItem('pushToken', pushToken);
 
-      // Send token to backend
       setRegistering(true);
       try {
         await api.post('/notifications/register-token', { pushToken });
         console.log('✅ Push token registered:', pushToken);
       } catch (err) {
-        console.log('Push token registration pending backend setup');
+        console.log('Push token registration pending');
       } finally {
         setRegistering(false);
       }
-
     } catch (err) {
       console.log('Push notification setup error:', err);
     }
   };
 
-  // Toggle a setting and save locally
   const handleToggle = async (key: string) => {
     const newSettings = {
       ...settings,
@@ -127,13 +96,11 @@ export default function NotificationsScreen() {
     };
     setSettings(newSettings);
     await AsyncStorage.setItem('notificationSettings', JSON.stringify(newSettings));
-
-    // If turning off all notifications show message
     const allOff = Object.values(newSettings).every(v => !v);
     if (allOff) {
       Alert.alert(
         'All Notifications Off',
-        'You have turned off all notifications. You can turn them back on anytime.',
+        'You can turn them back on anytime.',
         [{ text: 'OK' }]
       );
     }
@@ -173,7 +140,6 @@ export default function NotificationsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -181,7 +147,6 @@ export default function NotificationsScreen() {
         <Text style={styles.headerTitle}>Notifications</Text>
       </View>
 
-      {/* Info box */}
       <View style={[styles.infoBox, { backgroundColor: colors.card }]}>
         <Ionicons name="notifications-outline" size={20} color="#534AB7" />
         <Text style={[styles.infoText, { color: colors.subtitle }]}>
@@ -191,7 +156,6 @@ export default function NotificationsScreen() {
         </Text>
       </View>
 
-      {/* Loading */}
       {fetching ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#534AB7" />
@@ -209,18 +173,13 @@ export default function NotificationsScreen() {
                 }
               ]}
             >
-              {/* Icon */}
               <View style={[styles.iconCircle, { backgroundColor: item.color + '20' }]}>
                 <Ionicons name={item.icon as any} size={20} color={item.color} />
               </View>
-
-              {/* Text */}
               <View style={styles.rowText}>
                 <Text style={[styles.rowTitle, { color: colors.text }]}>{item.title}</Text>
                 <Text style={[styles.rowSubtitle, { color: colors.subtitle }]}>{item.subtitle}</Text>
               </View>
-
-              {/* Toggle */}
               <Switch
                 value={settings[item.key as keyof typeof settings]}
                 onValueChange={() => handleToggle(item.key)}
@@ -232,13 +191,10 @@ export default function NotificationsScreen() {
         </View>
       )}
 
-      {/* Push notification status */}
       <View style={[styles.statusCard, { backgroundColor: colors.card }]}>
         <Ionicons name="phone-portrait-outline" size={20} color="#1D9E75" />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.statusTitle, { color: colors.text }]}>
-            Push Notifications
-          </Text>
+          <Text style={[styles.statusTitle, { color: colors.text }]}>Push Notifications</Text>
           <Text style={[styles.statusSubtitle, { color: colors.subtitle }]}>
             Your device is registered to receive real-time notifications from Nexus
           </Text>
@@ -273,10 +229,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, marginBottom: 16,
   },
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 16, gap: 12,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
   iconCircle: {
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
