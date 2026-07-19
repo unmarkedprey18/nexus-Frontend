@@ -15,7 +15,6 @@ export default function ProfileScreen() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  // Reload profile every time screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadTokenAndProfile();
@@ -24,33 +23,26 @@ export default function ProfileScreen() {
 
   const loadTokenAndProfile = async () => {
     try {
-      // Get token from storage
       const savedToken = await AsyncStorage.getItem('token');
       setToken(savedToken);
-
-      // First show locally saved image immediately so it never goes blank
       const savedImage = await AsyncStorage.getItem('profileImage');
       if (savedImage) setProfileImage(savedImage);
-
-      // Then fetch fresh from backend
-      await fetchProfilePicture(savedToken);
+      await fetchProfilePicture();
     } catch (err) {
       console.log('Profile load error:', err);
     }
   };
 
-  const fetchProfilePicture = async (savedToken: string | null) => {
+  const fetchProfilePicture = async () => {
     try {
       const response = await api.get('/profile');
       const data = response.data?.data || response.data;
       if (data?.profilePictureUrl) {
         const url = `https://nexus-3rk7.onrender.com${data.profilePictureUrl}`;
         setProfileImage(url);
-        // Save locally so it shows even when backend sleeps
         await AsyncStorage.setItem('profileImage', url);
       }
     } catch (err) {
-      // Backend sleeping — already showing local saved image above
       console.log('Profile fetch failed — using local image');
     }
   };
@@ -67,15 +59,16 @@ export default function ProfileScreen() {
     { id: '4', title: 'Privacy Settings', icon: 'shield-outline', color: '#534AB7', route: '/privacy' },
     { id: '5', title: 'Help & Support', icon: 'help-circle-outline', color: '#534AB7', route: '/help' },
     { id: '6', title: 'About Nexus', icon: 'information-circle-outline', color: '#534AB7', route: '/about' },
+    { id: '7', title: '⭐ Go Premium', icon: 'star-outline', color: '#FFC107', route: '/subscription' },
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-
-      {/* Purple header with avatar */}
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         {profileImage && token ? (
-          // Pass token in headers so backend serves the protected image
           <Image
             source={{
               uri: profileImage,
@@ -83,7 +76,6 @@ export default function ProfileScreen() {
             }}
             style={styles.avatarImage}
             onError={() => {
-              // If image fails to load try local storage
               AsyncStorage.getItem('profileImage').then(saved => {
                 if (saved && saved !== profileImage) setProfileImage(saved);
                 else setProfileImage(null);
@@ -101,30 +93,41 @@ export default function ProfileScreen() {
         <Text style={styles.email}>{user?.email || 'No email available'}</Text>
       </View>
 
-      {/* Menu items */}
       <View style={[styles.menuContainer, { backgroundColor: colors.card }]}>
-        {menuItems.map((item) => (
+        {menuItems.map((item, index) => (
           <TouchableOpacity
             key={item.id}
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            style={[
+              styles.menuItem,
+              index < menuItems.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+              item.id === '7' && styles.premiumItem,
+            ]}
             onPress={() => router.push(item.route as any)}
           >
-            <View style={styles.menuIconCircle}>
+            <View style={[
+              styles.menuIconCircle,
+              item.id === '7' && styles.premiumIconCircle,
+            ]}>
               <Ionicons name={item.icon as any} size={20} color={item.color} />
             </View>
-            <Text style={[styles.menuTitle, { color: colors.text }]}>{item.title}</Text>
+            <Text style={[
+              styles.menuTitle,
+              { color: colors.text },
+              item.id === '7' && styles.premiumTitle,
+            ]}>
+              {item.title}
+            </Text>
             <Ionicons name="chevron-forward" size={18} color="#ccc" />
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Logout button */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Ionicons name="log-out-outline" size={20} color="#fff" />
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.version, { color: colors.subtitle }]}>Nexus v2.0.0</Text>
+      <Text style={[styles.version, { color: colors.subtitle }]}>Nexus v1.0.0</Text>
 
     </ScrollView>
   );
@@ -155,13 +158,16 @@ const styles = StyleSheet.create({
   },
   menuItem: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: 1,
+    paddingVertical: 16, paddingHorizontal: 16,
   },
+  premiumItem: { backgroundColor: '#FFFBEA' },
   menuIconCircle: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: '#ede9ff',
     justifyContent: 'center', alignItems: 'center', marginRight: 14,
   },
+  premiumIconCircle: { backgroundColor: '#FFF3CD' },
   menuTitle: { flex: 1, fontSize: 15, fontWeight: '500' },
+  premiumTitle: { color: '#B8860B', fontWeight: '700' },
   logoutButton: {
     backgroundColor: '#534AB7', flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8, margin: 16, padding: 16,
