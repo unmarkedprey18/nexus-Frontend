@@ -1,12 +1,12 @@
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../store/useTheme';
+import { useThemeStore } from '../store/themeStore';
+import { useState, useCallback } from 'react';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
-import { useThemeStore } from '../store/themeStore';
-import { useTheme } from '../store/useTheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
@@ -25,7 +25,6 @@ export default function AdminDashboardScreen() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [savedToken, setSavedToken] = useState<string | null>(null);
 
-  // Reload stats and profile every time screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchStats();
@@ -37,20 +36,23 @@ export default function AdminDashboardScreen() {
     try {
       const t = await AsyncStorage.getItem('token');
       setSavedToken(t);
+      const savedImage = await AsyncStorage.getItem('profileImage');
+      if (savedImage) setProfileImage(savedImage);
       const response = await api.get('/profile');
       const data = response.data?.data || response.data;
       if (data?.profilePictureUrl) {
-        setProfileImage(`https://nexus-3rk7.onrender.com${data.profilePictureUrl}`);
+        const url = `https://nexus-3rk7.onrender.com${data.profilePictureUrl}`;
+        setProfileImage(url);
+        await AsyncStorage.setItem('profileImage', url);
       }
     } catch (err) {
-      // Keep no image if fetch fails
+      // Keep local image
     }
   };
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-
       const [usersRes, newsRes, videosRes] = await Promise.allSettled([
         api.get('/admin/users'),
         api.get('/health/news'),
@@ -78,7 +80,6 @@ export default function AdminDashboardScreen() {
         totalNews: newsList.length,
         totalVideos: videosList.length,
       });
-
     } catch (err) {
       console.log('Stats fetch error:', err);
     } finally {
@@ -93,76 +94,46 @@ export default function AdminDashboardScreen() {
 
   const menuItems = [
     {
-      id: '1',
-      title: 'Manage Users',
+      id: '1', title: 'Manage Users',
       subtitle: `${stats.totalUsers} total · ${stats.activeUsers} active`,
-      icon: 'people-outline',
-      color: '#534AB7',
-      bg: '#ede9ff',
-      route: '/admin-users',
+      icon: 'people-outline', color: '#534AB7', bg: '#ede9ff', route: '/admin-users',
     },
     {
-      id: '2',
-      title: 'Publish News',
+      id: '2', title: 'Publish News',
       subtitle: `${stats.totalNews} articles published`,
-      icon: 'newspaper-outline',
-      color: '#1D9E75',
-      bg: '#d1fae5',
-      route: '/admin-news',
+      icon: 'newspaper-outline', color: '#1D9E75', bg: '#d1fae5', route: '/admin-news',
     },
     {
-      id: '3',
-      title: 'First Aid Videos',
+      id: '3', title: 'First Aid Videos',
       subtitle: `${stats.totalVideos} videos uploaded`,
-      icon: 'videocam-outline',
-      color: '#E24B4A',
-      bg: '#FEE2E2',
-      route: '/admin-videos',
+      icon: 'videocam-outline', color: '#E24B4A', bg: '#FEE2E2', route: '/admin-videos',
     },
     {
-      id: '4',
-      title: 'Audit Logs',
+      id: '4', title: 'Audit Logs',
       subtitle: 'View all system activity',
-      icon: 'list-outline',
-      color: '#F59E0B',
-      bg: '#FEF3C7',
-      route: '/admin-logs',
+      icon: 'list-outline', color: '#F59E0B', bg: '#FEF3C7', route: '/admin-logs',
     },
     {
-      id: '5',
-      title: 'Dashboard Stats',
+      id: '5', title: 'Dashboard Stats',
       subtitle: 'View detailed statistics',
-      icon: 'bar-chart-outline',
-      color: '#06B6D4',
-      bg: '#E0F7FA',
-      route: '/admin-stats',
+      icon: 'bar-chart-outline', color: '#06B6D4', bg: '#E0F7FA', route: '/admin-stats',
     },
     {
-      id: '6',
-      title: 'System Health',
+      id: '6', title: 'System Health',
       subtitle: 'Check backend status',
-      icon: 'pulse-outline',
-      color: '#8B5CF6',
-      bg: '#EDE9FE',
-      route: '/admin-health',
+      icon: 'pulse-outline', color: '#8B5CF6', bg: '#EDE9FE', route: '/admin-health',
     },
     {
-      id: '7',
-      title: 'My Profile',
+      id: '7', title: 'My Profile',
       subtitle: 'Edit name, photo and password',
-      icon: 'person-circle-outline',
-      color: '#534AB7',
-      bg: '#ede9ff',
-      route: '/admin-profile',
+      icon: 'person-circle-outline', color: '#534AB7', bg: '#ede9ff', route: '/admin-profile',
     },
     {
       id: '8',
       title: isDark ? 'Light Mode' : 'Dark Mode',
       subtitle: isDark ? 'Switch to light theme' : 'Switch to dark theme',
       icon: isDark ? 'sunny-outline' : 'moon-outline',
-      color: '#F59E0B',
-      bg: '#FEF3C7',
-      route: null,
+      color: '#F59E0B', bg: '#FEF3C7', route: null,
     },
   ];
 
@@ -172,7 +143,6 @@ export default function AdminDashboardScreen() {
       {/* Header with profile picture */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {/* Profile picture — tap to go to admin profile */}
           <TouchableOpacity onPress={() => router.push('/admin-profile')}>
             {profileImage ? (
               <Image
@@ -209,37 +179,25 @@ export default function AdminDashboardScreen() {
         </View>
       ) : (
         <View style={styles.statsGrid}>
-          <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: '#534AB7' }]}
-            onPress={() => router.push('/admin-users')}
-          >
+          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#534AB7' }]} onPress={() => router.push('/admin-users')}>
             <Ionicons name="people-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.totalUsers}</Text>
             <Text style={styles.statLabel}>Total Users</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: '#1D9E75' }]}
-            onPress={() => router.push('/admin-users')}
-          >
+          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#1D9E75' }]} onPress={() => router.push('/admin-users')}>
             <Ionicons name="person-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.activeUsers}</Text>
             <Text style={styles.statLabel}>Active Users</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: '#E24B4A' }]}
-            onPress={() => router.push('/admin-news')}
-          >
+          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#E24B4A' }]} onPress={() => router.push('/admin-news')}>
             <Ionicons name="newspaper-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.totalNews}</Text>
             <Text style={styles.statLabel}>Articles</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.statCard, { backgroundColor: '#F59E0B' }]}
-            onPress={() => router.push('/admin-videos')}
-          >
+          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#F59E0B' }]} onPress={() => router.push('/admin-videos')}>
             <Ionicons name="videocam-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.totalVideos}</Text>
             <Text style={styles.statLabel}>Videos</Text>
@@ -259,7 +217,6 @@ export default function AdminDashboardScreen() {
             ]}
             onPress={() => {
               if (item.route === null) {
-                // Toggle dark/light mode
                 toggleTheme();
               } else {
                 router.push(item.route as any);
@@ -276,11 +233,7 @@ export default function AdminDashboardScreen() {
             {item.route !== null ? (
               <Ionicons name="chevron-forward" size={18} color="#ccc" />
             ) : (
-              <Ionicons
-                name={isDark ? 'sunny' : 'moon'}
-                size={20}
-                color="#F59E0B"
-              />
+              <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color="#F59E0B" />
             )}
           </TouchableOpacity>
         ))}
@@ -292,7 +245,7 @@ export default function AdminDashboardScreen() {
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.version, { color: colors.subtitle }]}>Nexus Admin v2.0.0</Text>
+      <Text style={[styles.version, { color: colors.subtitle }]}>Nexus Admin v1.0.0</Text>
 
     </ScrollView>
   );
@@ -324,21 +277,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center', alignItems: 'center',
   },
-  statsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 16,
-  },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 16 },
   statCard: {
-    width: '47%', borderRadius: 16, padding: 16,
-    alignItems: 'center', gap: 8,
+    width: '47%', borderRadius: 16, padding: 16, alignItems: 'center', gap: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
   statNumber: { fontSize: 32, fontWeight: '800', color: '#fff' },
   statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  sectionTitle: {
-    fontSize: 16, fontWeight: '700',
-    marginHorizontal: 16, marginBottom: 10,
-  },
+  sectionTitle: { fontSize: 16, fontWeight: '700', marginHorizontal: 16, marginBottom: 10 },
   menuContainer: {
     marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
@@ -348,10 +295,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 14, paddingHorizontal: 16, gap: 14,
   },
-  menuIconCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: 'center', alignItems: 'center',
-  },
+  menuIconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
   menuText: { flex: 1 },
   menuTitle: { fontSize: 15, fontWeight: '600', marginBottom: 3 },
   menuSubtitle: { fontSize: 12 },
