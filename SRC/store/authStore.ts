@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type User = {
   id: string;
@@ -48,7 +48,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  // Save profile image separately so it persists
   updateProfileImage: async (imageUrl: string) => {
     await AsyncStorage.setItem('profileImage', imageUrl);
     const user = get().user;
