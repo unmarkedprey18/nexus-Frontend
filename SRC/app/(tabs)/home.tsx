@@ -1,10 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../store/useTheme';
+import { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
 // Health related categories — only show these
 const healthCategories = [
@@ -22,10 +22,8 @@ const isHealthRelated = (item: any) => {
   const title = (item.title || item.headline || '').toLowerCase();
   const summary = (item.summary || '').toLowerCase();
 
-  // Check category first
   if (healthCategories.some(c => category.includes(c))) return true;
 
-  // Check title and summary for health keywords
   const keywords = ['health', 'medical', 'fitness', 'wellness', 'doctor',
     'hospital', 'disease', 'treatment', 'medicine', 'patient',
     'deaf', 'hearing', 'disability', 'sign language', 'surgery',
@@ -74,7 +72,6 @@ export default function HomeScreen() {
     fetchNews();
   };
 
-  // Force backend to fetch latest news then reload
   const handleForceRefresh = async () => {
     try {
       setRefreshing(true);
@@ -85,22 +82,16 @@ export default function HomeScreen() {
     }
   };
 
-  // Filter news based on selected category and health filter
   const getFilteredNews = () => {
     let filtered = news;
-
-    // Filter health only if toggle is on
     if (showHealthOnly) {
       filtered = filtered.filter(item => isHealthRelated(item));
     }
-
-    // Filter by selected category
     if (selectedCategory !== 'All') {
       filtered = filtered.filter(item =>
         (item.category || '').toLowerCase().includes(selectedCategory.toLowerCase())
       );
     }
-
     return filtered;
   };
 
@@ -218,22 +209,17 @@ export default function HomeScreen() {
               })
             }
           >
-            {/* Category badge */}
             <View style={[styles.badge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
               <Text style={[styles.badgeText, { color: getCategoryColor(item.category) }]}>
                 {item.category || 'Health'}
               </Text>
             </View>
-
-            {/* News title and summary */}
             <Text style={[styles.cardTitle, { color: colors.text }]}>
               {item.title || item.headline || 'No title'}
             </Text>
             <Text style={[styles.cardSummary, { color: colors.subtitle }]} numberOfLines={3}>
               {item.summary || item.description || item.content?.substring(0, 150) + '...'}
             </Text>
-
-            {/* Source and date */}
             <View style={styles.cardFooter}>
               {item.source && (
                 <Text style={[styles.source, { color: colors.subtitle }]}>
@@ -256,15 +242,10 @@ export default function HomeScreen() {
           <View style={styles.centered}>
             <Ionicons name="newspaper-outline" size={48} color="#ccc" />
             <Text style={[styles.emptyText, { color: colors.subtitle }]}>
-              {showHealthOnly
-                ? 'No health news available right now'
-                : 'No news articles yet 📰'}
+              {showHealthOnly ? 'No health news available right now' : 'No news articles yet 📰'}
             </Text>
             {showHealthOnly && (
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => setShowHealthOnly(false)}
-              >
+              <TouchableOpacity style={styles.retryButton} onPress={() => setShowHealthOnly(false)}>
                 <Text style={styles.retryText}>Show All News</Text>
               </TouchableOpacity>
             )}
@@ -278,7 +259,6 @@ export default function HomeScreen() {
   );
 }
 
-// Get color for each category
 const getCategoryColor = (category: string) => {
   const cat = (category || '').toLowerCase();
   if (cat.includes('health')) return '#1D9E75';
@@ -294,23 +274,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     backgroundColor: '#534AB7',
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 24,
+    paddingTop: 60, paddingBottom: 20, paddingHorizontal: 24,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 16,
   },
   greeting: { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 4 },
   subGreeting: { fontSize: 14, color: '#d0ccff' },
-  refreshIcon: {
-    padding: 10,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 20,
-  },
+  refreshIcon: { padding: 10, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20 },
   healthToggle: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: 'rgba(255,255,255,0.15)',
