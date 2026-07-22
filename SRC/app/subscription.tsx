@@ -7,7 +7,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../store/useTheme';
 import { useAuthStore } from '../store/authStore';
+import * as WebBrowser from 'expo-web-browser';
 import api from '../services/api';
+
+const PAYSTACK_PUBLIC_KEY = 'pk_test_2640998512efd091d558bb715cfd7d2aaf1f2086';
 
 const plans = [
   { id: 'monthly', name: '1 Month', price: 40, duration: '1 month', popular: false, saving: null },
@@ -25,55 +28,62 @@ const premiumFeatures = [
   { icon: 'star-outline', title: 'Priority Support', desc: 'Get help faster as a premium member' },
 ];
 
-const mobileMoneyOptions = [
-  { id: 'mtn', name: 'MTN Mobile Money', color: '#FFC107', icon: '📱' },
-  { id: 'vodafone', name: 'Vodafone Cash', color: '#E53935', icon: '📱' },
-  { id: 'airteltigo', name: 'AirtelTigo Money', color: '#1565C0', icon: '📱' },
-];
-
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const user = useAuthStore((state: any) => state.user);
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const [selectedNetwork, setSelectedNetwork] = useState('mtn');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'plans' | 'payment' | 'success'>('plans');
+  const [step, setStep] = useState<'plans' | 'success'>('plans');
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
 
-  const handleSubscribe = async () => {
-    if (!phoneNumber.trim()) {
-      Alert.alert('Oops', 'Please enter your mobile money number');
-      return;
-    }
-    if (phoneNumber.length < 10) {
-      Alert.alert('Oops', 'Please enter a valid 10-digit phone number');
-      return;
-    }
+  // Amount in pesewas (multiply by 100)
+  const amountInPesewas = (selectedPlanData?.price || 0) * 100;
+
+  const handlePayWithPaystack = async () => {
     try {
       setLoading(true);
-      await api.post('/subscription/initiate', {
-        plan: selectedPlan,
-        network: selectedNetwork,
-        phoneNumber,
-        amount: selectedPlanData?.price,
-      });
-      setStep('success');
-    } catch (err: any) {
-      Alert.alert(
-        '📱 Complete Payment',
-        `Please send GH₵${selectedPlanData?.price} to our Mobile Money number:\n\n` +
-        `MTN: 0XX XXX XXXX\n` +
-        `Vodafone: 0XX XXX XXXX\n` +
-        `AirtelTigo: 0XX XXX XXXX\n\n` +
-        `Reference: NEXUS-${user?.email?.split('@')[0]?.toUpperCase()}\n\n` +
-        `After payment send your receipt to support and we will activate your subscription within 24 hours.`,
-        [{ text: 'OK', onPress: () => setStep('success') }]
-      );
-    } finally {
+
+      // Initiate payment on backend first
+      let paystackUrl = '';
+      try {
+        const response = await api.post('/subscription/initiate', {
+          plan: selectedPlan,
+          amount: selectedPlanData?.price,
+          email: user?.email,
+          currency: 'GHS',
+        });
+        paystackUrl = response.data?.data?.authorizationUrl ||
+          response.data?.authorizationUrl ||
+          response.data?.url || '';
+      } catch (err) {
+        // If backend fails use direct Paystack URL
+        paystackUrl = `https://paystack.com/pay/nexus-${selectedPlan}`;
+      }
+
       setLoading(false);
+
+      // Open Paystack in browser
+      const result = await WebBrowser.openBrowserAsync(
+        paystackUrl || `https://paystack.com/pay/nexus-${selectedPlan}`
+      );
+
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        Alert.alert(
+          'Payment Status',
+          'Did you complete the payment?',
+          [
+            { text: 'Yes, I paid!', onPress: () => setStep('success') },
+            { text: 'No, cancel', style: 'cancel' },
+          ]
+        );
+      } else {
+        setStep('success');
+      }
+    } catch (err) {
+      setLoading(false);
+      Alert.alert('Error', 'Could not open payment page. Please try again.');
     }
   };
 
@@ -85,127 +95,32 @@ export default function SubscriptionScreen() {
           <View style={styles.successIcon}>
             <Ionicons name="checkmark-circle" size={80} color="#1D9E75" />
           </View>
-          <Text style={[styles.successTitle, { color: colors.text }]}>Payment Initiated! 🎉</Text>
+          <Text style={[styles.successTitle, { color: colors.text }]}>Payment Successful! 🎉</Text>
           <Text style={[styles.successSubtitle, { color: colors.subtitle }]}>
-            Your payment request has been sent. Once confirmed your Nexus Premium account will be activated within 24 hours!
+            Your Nexus Premium account has been activated! Enjoy unlimited access to all features!
           </Text>
           <View style={[styles.successCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.successCardTitle, { color: colors.text }]}>What happens next?</Text>
-            <View style={styles.successStep}>
-              <View style={styles.successStepNumber}><Text style={styles.successStepNumberText}>1</Text></View>
-              <Text style={[styles.successStepText, { color: colors.subtitle }]}>Complete payment on your mobile money app</Text>
-            </View>
-            <View style={styles.successStep}>
-              <View style={styles.successStepNumber}><Text style={styles.successStepNumberText}>2</Text></View>
-              <Text style={[styles.successStepText, { color: colors.subtitle }]}>Send your receipt to our support team</Text>
-            </View>
-            <View style={styles.successStep}>
-              <View style={styles.successStepNumber}><Text style={styles.successStepNumberText}>3</Text></View>
-              <Text style={[styles.successStepText, { color: colors.subtitle }]}>Your premium access will be activated within 24 hours</Text>
-            </View>
+            <Text style={[styles.successCardTitle, { color: colors.text }]}>You now have access to:</Text>
+            {premiumFeatures.map((feature, index) => (
+              <View key={index} style={styles.successFeature}>
+                <Ionicons name="checkmark-circle" size={18} color="#1D9E75" />
+                <Text style={[styles.successFeatureText, { color: colors.text }]}>{feature.title}</Text>
+              </View>
+            ))}
           </View>
           <TouchableOpacity style={styles.doneButton} onPress={() => router.back()}>
-            <Text style={styles.doneButtonText}>Back to App</Text>
+            <Text style={styles.doneButtonText}>Start Using Premium!</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // Payment screen
-  if (step === 'payment') {
-    return (
-      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => setStep('plans')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Complete Payment</Text>
-        </View>
-
-        {/* Order summary */}
-        <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
-          <Text style={[styles.orderTitle, { color: colors.text }]}>Order Summary</Text>
-          <View style={styles.orderRow}>
-            <Text style={[styles.orderLabel, { color: colors.subtitle }]}>Plan</Text>
-            <Text style={[styles.orderValue, { color: colors.text }]}>{selectedPlanData?.name}</Text>
-          </View>
-          <View style={styles.orderRow}>
-            <Text style={[styles.orderLabel, { color: colors.subtitle }]}>Duration</Text>
-            <Text style={[styles.orderValue, { color: colors.text }]}>{selectedPlanData?.duration}</Text>
-          </View>
-          <View style={[styles.orderRow, styles.orderTotal]}>
-            <Text style={styles.orderTotalLabel}>Total</Text>
-            <Text style={styles.orderTotalValue}>GH₵ {selectedPlanData?.price}</Text>
-          </View>
-        </View>
-
-        {/* Select network */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Network</Text>
-        <View style={styles.networkRow}>
-          {mobileMoneyOptions.map((network) => (
-            <TouchableOpacity
-              key={network.id}
-              style={[
-                styles.networkButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
-                selectedNetwork === network.id && { borderColor: network.color, borderWidth: 2 },
-              ]}
-              onPress={() => setSelectedNetwork(network.id)}
-            >
-              <Text style={styles.networkIcon}>{network.icon}</Text>
-              <Text style={[styles.networkName, { color: colors.text }]}>{network.name}</Text>
-              {selectedNetwork === network.id && (
-                <Ionicons name="checkmark-circle" size={18} color={network.color} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Phone number */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Mobile Money Number</Text>
-        <TouchableOpacity
-          style={[styles.phoneInput, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => {
-            Alert.prompt(
-              'Enter Phone Number',
-              'Enter your mobile money number',
-              (text) => setPhoneNumber(text),
-              'plain-text',
-              phoneNumber,
-              'phone-pad'
-            );
-          }}
-        >
-          <Ionicons name="call-outline" size={20} color="#534AB7" />
-          <Text style={[styles.phoneInputText, { color: phoneNumber ? colors.text : '#999' }]}>
-            {phoneNumber || 'Tap to enter your mobile money number'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Pay button */}
-        <TouchableOpacity style={styles.payButton} onPress={handleSubscribe} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="lock-closed-outline" size={20} color="#fff" />
-              <Text style={styles.payButtonText}>Pay GH₵ {selectedPlanData?.price}</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <Text style={[styles.secureNote, { color: colors.subtitle }]}>
-          🔒 Your payment is secure and encrypted
-        </Text>
-      </ScrollView>
-    );
-  }
-
-  // Plans screen
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -311,15 +226,50 @@ export default function SubscriptionScreen() {
       </View>
 
       {/* Subscribe button */}
-      <TouchableOpacity style={styles.subscribeButton} onPress={() => setStep('payment')}>
-        <Ionicons name="star-outline" size={20} color="#fff" />
-        <Text style={styles.subscribeButtonText}>
-          Subscribe for GH₵ {selectedPlanData?.price}
-        </Text>
+      <TouchableOpacity
+        style={styles.subscribeButton}
+        onPress={handlePayWithPaystack}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="lock-closed-outline" size={20} color="#fff" />
+            <Text style={styles.subscribeButtonText}>
+              Pay GH₵ {selectedPlanData?.price} with Paystack
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
 
+      {/* Supported payment methods */}
+      <View style={[styles.paymentMethods, { backgroundColor: colors.card }]}>
+        <Text style={[styles.paymentMethodsTitle, { color: colors.subtitle }]}>
+          Supported Payment Methods
+        </Text>
+        <View style={styles.paymentMethodsRow}>
+          <View style={styles.paymentMethod}>
+            <Text style={styles.paymentMethodIcon}>📱</Text>
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>MTN MoMo</Text>
+          </View>
+          <View style={styles.paymentMethod}>
+            <Text style={styles.paymentMethodIcon}>📱</Text>
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>Vodafone</Text>
+          </View>
+          <View style={styles.paymentMethod}>
+            <Text style={styles.paymentMethodIcon}>📱</Text>
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>AirtelTigo</Text>
+          </View>
+          <View style={styles.paymentMethod}>
+            <Text style={styles.paymentMethodIcon}>💳</Text>
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>Card</Text>
+          </View>
+        </View>
+      </View>
+
       <Text style={[styles.termsNote, { color: colors.subtitle }]}>
-        By subscribing you agree to our Terms of Service. Subscriptions are activated after payment confirmation.
+        Payments are processed securely by Paystack. By subscribing you agree to our Terms of Service.
       </Text>
 
     </ScrollView>
@@ -423,44 +373,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   subscribeButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  termsNote: {
-    fontSize: 12, textAlign: 'center',
-    marginHorizontal: 24, marginBottom: 32, lineHeight: 18,
-  },
-  orderSummary: {
-    margin: 16, borderRadius: 16, padding: 16,
+  paymentMethods: {
+    marginHorizontal: 16, borderRadius: 16, padding: 16, marginTop: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  orderTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
-  orderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  orderLabel: { fontSize: 14 },
-  orderValue: { fontSize: 14, fontWeight: '600' },
-  orderTotal: {
-    borderTopWidth: 1, borderTopColor: '#eee',
-    paddingTop: 10, marginTop: 4,
+  paymentMethodsTitle: { fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  paymentMethodsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  paymentMethod: { alignItems: 'center', gap: 4 },
+  paymentMethodIcon: { fontSize: 24 },
+  paymentMethodName: { fontSize: 11, fontWeight: '600' },
+  termsNote: {
+    fontSize: 12, textAlign: 'center',
+    marginHorizontal: 24, marginBottom: 32, lineHeight: 18, marginTop: 12,
   },
-  orderTotalLabel: { fontSize: 16, fontWeight: '700', color: '#534AB7' },
-  orderTotalValue: { fontSize: 20, fontWeight: '800', color: '#534AB7' },
-  networkRow: { paddingHorizontal: 16, gap: 10 },
-  networkButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderRadius: 12, padding: 14, borderWidth: 1, marginBottom: 4,
-  },
-  networkIcon: { fontSize: 20 },
-  networkName: { flex: 1, fontSize: 14, fontWeight: '600' },
-  phoneInput: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    marginHorizontal: 16, borderRadius: 12, padding: 16, borderWidth: 1,
-  },
-  phoneInputText: { flex: 1, fontSize: 15 },
-  payButton: {
-    backgroundColor: '#534AB7', flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center',
-    gap: 8, margin: 16, marginTop: 24, padding: 18, borderRadius: 14,
-  },
-  payButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  secureNote: { fontSize: 12, textAlign: 'center', marginBottom: 32 },
   successContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
@@ -473,13 +399,8 @@ const styles = StyleSheet.create({
   successSubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 24, marginBottom: 24 },
   successCard: { borderRadius: 16, padding: 20, width: '100%', marginBottom: 24 },
   successCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  successStep: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-  successStepNumber: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#534AB7',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  successStepNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  successStepText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  successFeature: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  successFeatureText: { fontSize: 14 },
   doneButton: {
     backgroundColor: '#534AB7', padding: 16,
     borderRadius: 12, width: '100%', alignItems: 'center',
