@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, ActivityIndicator,
+  TouchableOpacity, Alert, ActivityIndicator, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,8 +9,6 @@ import { useTheme } from '../store/useTheme';
 import { useAuthStore } from '../store/authStore';
 import * as WebBrowser from 'expo-web-browser';
 import api from '../services/api';
-
-const PAYSTACK_PUBLIC_KEY = 'pk_test_2640998512efd091d558bb715cfd7d2aaf1f2086';
 
 const plans = [
   { id: 'monthly', name: '1 Month', price: 40, duration: '1 month', popular: false, saving: null },
@@ -28,63 +26,107 @@ const premiumFeatures = [
   { icon: 'star-outline', title: 'Priority Support', desc: 'Get help faster as a premium member' },
 ];
 
+const MOMO_NUMBER = '0536764978';
+const MOMO_NAME = 'Patience Bentil';
+const SUPPORT_WHATSAPP = '0536764978';
+
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const user = useAuthStore((state: any) => state.user);
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<'plans' | 'success'>('plans');
+  const [step, setStep] = useState<'plans' | 'payment' | 'success'>('plans');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [useManual, setUseManual] = useState(false);
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
-
-  // Amount in pesewas (multiply by 100)
-  const amountInPesewas = (selectedPlanData?.price || 0) * 100;
+  const reference = `NEXUS-${user?.email?.split('@')[0]?.toUpperCase()}-${Date.now()}`;
 
   const handlePayWithPaystack = async () => {
+    if (!phoneNumber.trim()) {
+      Alert.alert('Oops', 'Please enter your mobile money number!');
+      return;
+    }
+    if (phoneNumber.length < 10) {
+      Alert.alert('Oops', 'Please enter a valid 10 digit phone number!');
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // Initiate payment on backend first
-      let paystackUrl = '';
-      try {
-        const response = await api.post('/subscription/initiate', {
-          plan: selectedPlan,
-          amount: selectedPlanData?.price,
-          email: user?.email,
-          currency: 'GHS',
-        });
-        paystackUrl = response.data?.data?.authorizationUrl ||
-          response.data?.authorizationUrl ||
-          response.data?.url || '';
-      } catch (err) {
-        // If backend fails use direct Paystack URL
-        paystackUrl = `https://paystack.com/pay/nexus-${selectedPlan}`;
-      }
+      // Try Paystack first
+      const response = await api.post('/subscription/initiate', {
+        plan: selectedPlan,
+        subscriptionType: selectedPlan.toUpperCase(),
+        amount: selectedPlanData?.price,
+        email: user?.email,
+        currency: 'GHS',
+        phoneNumber: phoneNumber.trim(),
+      });
+
+      console.log('Paystack response:', JSON.stringify(response.data));
+
+      const authorizationUrl =
+        response.data?.data?.authorizationUrl ||
+        response.data?.authorizationUrl ||
+        response.data?.data?.authorization_url ||
+        response.data?.authorization_url || '';
+
+      console.log('Authorization URL:', authorizationUrl);
 
       setLoading(false);
 
-      // Open Paystack in browser
-      const result = await WebBrowser.openBrowserAsync(
-        paystackUrl || `https://paystack.com/pay/nexus-${selectedPlan}`
-      );
-
-      if (result.type === 'cancel' || result.type === 'dismiss') {
+      if (authorizationUrl && authorizationUrl.startsWith('https://checkout.paystack.com')) {
+        // Open real Paystack checkout
+        await WebBrowser.openBrowserAsync(authorizationUrl);
         Alert.alert(
           'Payment Status',
           'Did you complete the payment?',
           [
-            { text: 'Yes, I paid!', onPress: () => setStep('success') },
-            { text: 'No, cancel', style: 'cancel' },
+            { text: '✅ Yes I paid!', onPress: () => setStep('success') },
+            { text: '❌ No cancel', style: 'cancel' },
           ]
         );
       } else {
-        setStep('success');
+        // Paystack URL not valid — go to manual payment
+        setUseManual(true);
+        setStep('payment');
       }
-    } catch (err) {
+
+    } catch (err: any) {
       setLoading(false);
-      Alert.alert('Error', 'Could not open payment page. Please try again.');
+      console.log('Paystack error:', JSON.stringify(err.response?.data));
+      // Paystack failed — go to manual payment
+      setUseManual(true);
+      setStep('payment');
     }
+  };
+
+  const handleConfirmPayment = () => {
+    Alert.alert(
+      '✅ Confirm Payment',
+      `Have you sent GH₵${selectedPlanData?.price} to ${MOMO_NAME} on MTN MoMo?\n\nReference: ${reference}`,
+      [
+        { text: 'Yes I have paid!', onPress: () => setStep('success') },
+        { text: 'Not yet', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleContactSupport = async () => {
+    const message =
+      `Hello Nexus Support,\n\n` +
+      `I have made a payment for the ${selectedPlanData?.name} subscription plan.\n\n` +
+      `Amount: GH₵${selectedPlanData?.price}\n` +
+      `Network: MTN Mobile Money\n` +
+      `Paid to: ${MOMO_NAME} (${MOMO_NUMBER})\n` +
+      `Reference: ${reference}\n` +
+      `Email: ${user?.email}\n\n` +
+      `Please activate my premium account. Thank you!`;
+    const whatsappUrl = `https://wa.me/233${SUPPORT_WHATSAPP.substring(1)}?text=${encodeURIComponent(message)}`;
+    await WebBrowser.openBrowserAsync(whatsappUrl);
   };
 
   // Success screen
@@ -95,27 +137,149 @@ export default function SubscriptionScreen() {
           <View style={styles.successIcon}>
             <Ionicons name="checkmark-circle" size={80} color="#1D9E75" />
           </View>
-          <Text style={[styles.successTitle, { color: colors.text }]}>Payment Successful! 🎉</Text>
+          <Text style={[styles.successTitle, { color: colors.text }]}>
+            Payment Submitted! 🎉
+          </Text>
           <Text style={[styles.successSubtitle, { color: colors.subtitle }]}>
-            Your Nexus Premium account has been activated! Enjoy unlimited access to all features!
+            Your Nexus Premium account will be activated within 24 hours after payment verification!
           </Text>
           <View style={[styles.successCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.successCardTitle, { color: colors.text }]}>You now have access to:</Text>
-            {premiumFeatures.map((feature, index) => (
-              <View key={index} style={styles.successFeature}>
-                <Ionicons name="checkmark-circle" size={18} color="#1D9E75" />
-                <Text style={[styles.successFeatureText, { color: colors.text }]}>{feature.title}</Text>
+            <Text style={[styles.successCardTitle, { color: colors.text }]}>
+              What happens next?
+            </Text>
+            <View style={styles.successStep}>
+              <View style={styles.successStepNumber}>
+                <Text style={styles.successStepNumberText}>1</Text>
               </View>
-            ))}
+              <Text style={[styles.successStepText, { color: colors.subtitle }]}>
+                Send your payment screenshot to our support team on WhatsApp
+              </Text>
+            </View>
+            <View style={styles.successStep}>
+              <View style={styles.successStepNumber}>
+                <Text style={styles.successStepNumberText}>2</Text>
+              </View>
+              <Text style={[styles.successStepText, { color: colors.subtitle }]}>
+                We will verify your payment within 24 hours
+              </Text>
+            </View>
+            <View style={styles.successStep}>
+              <View style={styles.successStepNumber}>
+                <Text style={styles.successStepNumberText}>3</Text>
+              </View>
+              <Text style={[styles.successStepText, { color: colors.subtitle }]}>
+                Your premium features will be unlocked automatically
+              </Text>
+            </View>
           </View>
+          <TouchableOpacity style={styles.whatsappButton} onPress={handleContactSupport}>
+            <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+            <Text style={styles.whatsappButtonText}>Send Receipt on WhatsApp</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.doneButton} onPress={() => router.back()}>
-            <Text style={styles.doneButtonText}>Start Using Premium!</Text>
+            <Text style={styles.doneButtonText}>Back to App</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
+  // Manual payment screen
+  if (step === 'payment' && useManual) {
+    return (
+      <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setStep('plans')} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Complete Payment</Text>
+        </View>
+
+        <View style={[styles.orderCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.orderTitle, { color: colors.text }]}>Order Summary</Text>
+          <View style={styles.orderRow}>
+            <Text style={[styles.orderLabel, { color: colors.subtitle }]}>Plan</Text>
+            <Text style={[styles.orderValue, { color: colors.text }]}>{selectedPlanData?.name}</Text>
+          </View>
+          <View style={styles.orderRow}>
+            <Text style={[styles.orderLabel, { color: colors.subtitle }]}>Duration</Text>
+            <Text style={[styles.orderValue, { color: colors.text }]}>{selectedPlanData?.duration}</Text>
+          </View>
+          <View style={[styles.orderRow, styles.orderTotalRow]}>
+            <Text style={styles.orderTotalLabel}>Total</Text>
+            <Text style={styles.orderTotalValue}>GH₵ {selectedPlanData?.price}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Instructions</Text>
+        <View style={[styles.instructionsCard, { backgroundColor: colors.card }]}>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>1</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              Open your <Text style={{ fontWeight: '700' }}>MTN Mobile Money</Text> app
+            </Text>
+          </View>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>2</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              Send <Text style={{ fontWeight: '700', color: '#534AB7' }}>
+                GH₵ {selectedPlanData?.price}
+              </Text> to this number:
+            </Text>
+          </View>
+          <View style={[styles.momoBox, { backgroundColor: colors.background }]}>
+            <View style={styles.momoNetworkBadge}>
+              <Text style={styles.momoNetworkText}>🟡 MTN MoMo</Text>
+            </View>
+            <Text style={styles.momoNumber}>{MOMO_NUMBER}</Text>
+            <Text style={styles.momoName}>{MOMO_NAME}</Text>
+          </View>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>3</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              Use this as your payment reference:
+            </Text>
+          </View>
+          <View style={[styles.referenceBox, { backgroundColor: colors.background }]}>
+            <Text style={styles.referenceLabel}>Payment Reference:</Text>
+            <Text style={styles.referenceNumber}>{reference}</Text>
+          </View>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>4</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              After payment tap <Text style={{ fontWeight: '700' }}>"I Have Paid"</Text> and send your screenshot to us on WhatsApp
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment}>
+          <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+          <Text style={styles.confirmButtonText}>I Have Paid!</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.supportButton} onPress={handleContactSupport}>
+          <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+          <Text style={[styles.supportButtonText, { color: '#25D366' }]}>
+            Contact Support on WhatsApp
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.termsNote, { color: colors.subtitle }]}>
+          Premium will be activated within 24 hours after payment verification.
+        </Text>
+      </ScrollView>
+    );
+  }
+
+  // Plans screen
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -128,7 +292,6 @@ export default function SubscriptionScreen() {
         <Text style={styles.headerTitle}>Nexus Premium</Text>
       </View>
 
-      {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.crownContainer}>
           <Ionicons name="star" size={48} color="#FFC107" />
@@ -225,6 +388,24 @@ export default function SubscriptionScreen() {
         ))}
       </View>
 
+      {/* Phone number input */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Mobile Money Number</Text>
+      <View style={[styles.phoneContainer, { backgroundColor: colors.card }]}>
+        <Ionicons name="call-outline" size={20} color="#534AB7" />
+        <TextInput
+          style={[styles.phoneInput, { color: colors.text }]}
+          placeholder="Enter your mobile money number"
+          placeholderTextColor="#999"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          keyboardType="phone-pad"
+          maxLength={10}
+        />
+      </View>
+      <Text style={[styles.phoneHint, { color: colors.subtitle }]}>
+        Enter the number linked to your MTN, Vodafone or AirtelTigo Mobile Money
+      </Text>
+
       {/* Subscribe button */}
       <TouchableOpacity
         style={styles.subscribeButton}
@@ -250,15 +431,15 @@ export default function SubscriptionScreen() {
         </Text>
         <View style={styles.paymentMethodsRow}>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>📱</Text>
+            <Text style={styles.paymentMethodIcon}>🟡</Text>
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>MTN MoMo</Text>
           </View>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>📱</Text>
+            <Text style={styles.paymentMethodIcon}>🔴</Text>
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>Vodafone</Text>
           </View>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>📱</Text>
+            <Text style={styles.paymentMethodIcon}>🔵</Text>
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>AirtelTigo</Text>
           </View>
           <View style={styles.paymentMethod}>
@@ -271,7 +452,6 @@ export default function SubscriptionScreen() {
       <Text style={[styles.termsNote, { color: colors.subtitle }]}>
         Payments are processed securely by Paystack. By subscribing you agree to our Terms of Service.
       </Text>
-
     </ScrollView>
   );
 }
@@ -365,6 +545,14 @@ const styles = StyleSheet.create({
   planDuration: { fontSize: 12, marginTop: 2 },
   planPrice: { fontSize: 18, fontWeight: '800', color: '#999' },
   planPriceActive: { color: '#534AB7' },
+  phoneContainer: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, borderRadius: 12, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  phoneInput: { flex: 1, fontSize: 15 },
+  phoneHint: { fontSize: 12, marginHorizontal: 16, marginTop: 6, lineHeight: 18 },
   subscribeButton: {
     backgroundColor: '#534AB7', flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
@@ -387,6 +575,71 @@ const styles = StyleSheet.create({
     fontSize: 12, textAlign: 'center',
     marginHorizontal: 24, marginBottom: 32, lineHeight: 18, marginTop: 12,
   },
+  orderCard: {
+    margin: 16, borderRadius: 16, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  orderTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
+  orderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  orderLabel: { fontSize: 14 },
+  orderValue: { fontSize: 14, fontWeight: '600' },
+  orderTotalRow: {
+    borderTopWidth: 1, borderTopColor: '#eee',
+    paddingTop: 10, marginTop: 4,
+  },
+  orderTotalLabel: { fontSize: 16, fontWeight: '700', color: '#534AB7' },
+  orderTotalValue: { fontSize: 20, fontWeight: '800', color: '#534AB7' },
+  instructionsCard: {
+    marginHorizontal: 16, borderRadius: 16, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, marginBottom: 8,
+  },
+  instructionStep: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    gap: 12, marginBottom: 14,
+  },
+  instructionNumber: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#534AB7',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  instructionNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  instructionText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  momoBox: {
+    borderRadius: 12, padding: 16, marginBottom: 14, alignItems: 'center',
+  },
+  momoNetworkBadge: {
+    backgroundColor: '#FFC107', paddingHorizontal: 12,
+    paddingVertical: 4, borderRadius: 20, marginBottom: 10,
+  },
+  momoNetworkText: { fontSize: 12, fontWeight: '700', color: '#1a1a1a' },
+  momoNumber: {
+    fontSize: 28, fontWeight: '800', color: '#534AB7',
+    letterSpacing: 2, marginBottom: 4,
+  },
+  momoName: { fontSize: 14, fontWeight: '600', color: '#666' },
+  referenceBox: {
+    borderRadius: 10, padding: 14, marginBottom: 14, alignItems: 'center',
+  },
+  referenceLabel: { fontSize: 12, color: '#999', marginBottom: 6 },
+  referenceNumber: {
+    fontSize: 13, fontWeight: '700', color: '#534AB7', letterSpacing: 1,
+  },
+  confirmButton: {
+    backgroundColor: '#1D9E75', flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 8, margin: 16, padding: 18, borderRadius: 14,
+    shadowColor: '#1D9E75', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+  },
+  confirmButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  supportButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, marginHorizontal: 16, padding: 14, borderRadius: 14,
+    borderWidth: 1, borderColor: '#25D366', marginBottom: 8,
+  },
+  supportButtonText: { fontSize: 15, fontWeight: '600' },
   successContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
@@ -397,10 +650,21 @@ const styles = StyleSheet.create({
   },
   successTitle: { fontSize: 24, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
   successSubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 24, marginBottom: 24 },
-  successCard: { borderRadius: 16, padding: 20, width: '100%', marginBottom: 24 },
+  successCard: { borderRadius: 16, padding: 20, width: '100%', marginBottom: 16 },
   successCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  successFeature: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-  successFeatureText: { fontSize: 14 },
+  successStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
+  successStepNumber: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#534AB7',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  successStepNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  successStepText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  whatsappButton: {
+    backgroundColor: '#25D366', flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 8, padding: 16, borderRadius: 12, width: '100%', marginBottom: 12,
+  },
+  whatsappButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   doneButton: {
     backgroundColor: '#534AB7', padding: 16,
     borderRadius: 12, width: '100%', alignItems: 'center',
