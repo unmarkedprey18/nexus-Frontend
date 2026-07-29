@@ -96,51 +96,53 @@ export default function AdminDashboardScreen() {
     {
       id: '1', title: 'Manage Users',
       subtitle: `${stats.totalUsers} total · ${stats.activeUsers} active`,
-      icon: 'people-outline', color: '#534AB7', bg: '#ede9ff', route: '/admin-users',
+      icon: 'people-outline', color: '#008080', bg: '#B2DFDB', route: '/admin-users',
     },
     {
       id: '2', title: 'Publish News',
       subtitle: `${stats.totalNews} articles published`,
-      icon: 'newspaper-outline', color: '#1D9E75', bg: '#d1fae5', route: '/admin-news',
+      icon: 'newspaper-outline', color: '#006666', bg: '#E0F2F1', route: '/admin-news',
     },
     {
       id: '3', title: 'First Aid Videos',
       subtitle: `${stats.totalVideos} videos uploaded`,
-      icon: 'videocam-outline', color: '#E24B4A', bg: '#FEE2E2', route: '/admin-videos',
+      icon: 'videocam-outline', color: '#00897B', bg: '#B2DFDB', route: '/admin-videos',
     },
     {
       id: '4', title: 'Audit Logs',
       subtitle: 'View all system activity',
-      icon: 'list-outline', color: '#F59E0B', bg: '#FEF3C7', route: '/admin-logs',
+      icon: 'list-outline', color: '#00796B', bg: '#E0F2F1', route: '/admin-logs',
     },
     {
       id: '5', title: 'Dashboard Stats',
       subtitle: 'View detailed statistics',
-      icon: 'bar-chart-outline', color: '#06B6D4', bg: '#E0F7FA', route: '/admin-stats',
+      icon: 'bar-chart-outline', color: '#004D40', bg: '#B2DFDB', route: '/admin-stats',
     },
     {
       id: '6', title: 'System Health',
       subtitle: 'Check backend status',
-      icon: 'pulse-outline', color: '#8B5CF6', bg: '#EDE9FE', route: '/admin-health',
+      icon: 'pulse-outline', color: '#008080', bg: '#E0F2F1', route: '/admin-health',
     },
     {
       id: '7', title: 'My Profile',
       subtitle: 'Edit name, photo and password',
-      icon: 'person-circle-outline', color: '#534AB7', bg: '#ede9ff', route: '/admin-profile',
+      icon: 'person-circle-outline', color: '#006666', bg: '#B2DFDB', route: '/admin-profile',
     },
     {
       id: '8',
       title: isDark ? 'Light Mode' : 'Dark Mode',
       subtitle: isDark ? 'Switch to light theme' : 'Switch to dark theme',
       icon: isDark ? 'sunny-outline' : 'moon-outline',
-      color: '#F59E0B', bg: '#FEF3C7', route: null,
+      color: '#008080', bg: '#E0F2F1', route: null,
     },
   ];
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-
-      {/* Header with profile picture */}
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => router.push('/admin-profile')}>
@@ -163,10 +165,15 @@ export default function AdminDashboardScreen() {
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>Admin Dashboard</Text>
-            <Text style={styles.headerSubtitle}>Welcome back, {user?.name || 'Admin'} 👋</Text>
+            <Text style={styles.headerSubtitle}>
+              Welcome back, {user?.name || 'Admin'}
+            </Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => { fetchStats(); fetchProfilePicture(); }}>
+        <TouchableOpacity
+          style={styles.refreshBtn}
+          onPress={() => { fetchStats(); fetchProfilePicture(); }}
+        >
           <Ionicons name="refresh-outline" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -174,30 +181,44 @@ export default function AdminDashboardScreen() {
       {/* Stats cards */}
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#534AB7" />
-          <Text style={[styles.loadingText, { color: colors.subtitle }]}>Loading stats...</Text>
+          <ActivityIndicator size="large" color="#008080" />
+          <Text style={[styles.loadingText, { color: colors.subtitle }]}>
+            Loading stats...
+          </Text>
         </View>
       ) : (
         <View style={styles.statsGrid}>
-          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#534AB7' }]} onPress={() => router.push('/admin-users')}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#008080' }]}
+            onPress={() => router.push('/admin-users')}
+          >
             <Ionicons name="people-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.totalUsers}</Text>
             <Text style={styles.statLabel}>Total Users</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#1D9E75' }]} onPress={() => router.push('/admin-users')}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#006666' }]}
+            onPress={() => router.push('/admin-users')}
+          >
             <Ionicons name="person-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.activeUsers}</Text>
             <Text style={styles.statLabel}>Active Users</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#E24B4A' }]} onPress={() => router.push('/admin-news')}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#00897B' }]}
+            onPress={() => router.push('/admin-news')}
+          >
             <Ionicons name="newspaper-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.totalNews}</Text>
             <Text style={styles.statLabel}>Articles</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.statCard, { backgroundColor: '#F59E0B' }]} onPress={() => router.push('/admin-videos')}>
+          <TouchableOpacity
+            style={[styles.statCard, { backgroundColor: '#00796B' }]}
+            onPress={() => router.push('/admin-videos')}
+          >
             <Ionicons name="videocam-outline" size={28} color="#fff" />
             <Text style={styles.statNumber}>{stats.totalVideos}</Text>
             <Text style={styles.statLabel}>Videos</Text>
@@ -213,7 +234,10 @@ export default function AdminDashboardScreen() {
             key={item.id}
             style={[
               styles.menuItem,
-              index < menuItems.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
+              index < menuItems.length - 1 && {
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }
             ]}
             onPress={() => {
               if (item.route === null) {
@@ -231,9 +255,13 @@ export default function AdminDashboardScreen() {
               <Text style={[styles.menuSubtitle, { color: colors.subtitle }]}>{item.subtitle}</Text>
             </View>
             {item.route !== null ? (
-              <Ionicons name="chevron-forward" size={18} color="#ccc" />
+              <Ionicons name="chevron-forward" size={18} color="#B2DFDB" />
             ) : (
-              <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color="#F59E0B" />
+              <Ionicons
+                name={isDark ? 'sunny' : 'moon'}
+                size={20}
+                color="#008080"
+              />
             )}
           </TouchableOpacity>
         ))}
@@ -245,7 +273,9 @@ export default function AdminDashboardScreen() {
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.version, { color: colors.subtitle }]}>Nexus Admin v1.0.0</Text>
+      <Text style={[styles.version, { color: colors.subtitle }]}>
+        Nexus Admin v1.0.0
+      </Text>
 
     </ScrollView>
   );
@@ -254,55 +284,106 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    backgroundColor: '#534AB7',
-    paddingTop: 60, paddingBottom: 30, paddingHorizontal: 24,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#008080',
+    paddingTop: 60,
+    paddingBottom: 30,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerAvatar: {
-    width: 46, height: 46, borderRadius: 23,
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   headerAvatarPlaceholder: {
-    width: 46, height: 46, borderRadius: 23,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   headerAvatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  headerSubtitle: { fontSize: 13, color: '#d0ccff' },
+  headerSubtitle: { fontSize: 13, color: '#B2EBF2' },
   refreshBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 16 },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    padding: 16,
+  },
   statCard: {
-    width: '47%', borderRadius: 16, padding: 16, alignItems: 'center', gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
+    width: '47%',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#008080',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   statNumber: { fontSize: 32, fontWeight: '800', color: '#fff' },
   statLabel: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginHorizontal: 16, marginBottom: 10 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
   menuContainer: {
-    marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#008080',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   menuItem: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 14, paddingHorizontal: 16, gap: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 14,
   },
-  menuIconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  menuIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   menuText: { flex: 1 },
   menuTitle: { fontSize: 15, fontWeight: '600', marginBottom: 3 },
   menuSubtitle: { fontSize: 12 },
   logoutButton: {
-    backgroundColor: '#534AB7', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, margin: 16, padding: 16,
-    borderRadius: 12, marginTop: 20,
+    backgroundColor: '#008080',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
   },
   logoutText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   version: { textAlign: 'center', fontSize: 13, marginBottom: 32 },
