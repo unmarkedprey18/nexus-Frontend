@@ -1,20 +1,25 @@
 import { useThemeStore } from './themeStore';
 
-// This hook gives any screen easy access to theme colors
-// Instead of typing the same colors on every screen,
-// just call useTheme() and get everything ready to use
-export function useTheme() {
-  const isDark = useThemeStore((state) => state.isDark);
+export const useTheme = () => {
+  const { isDark } = useThemeStore();
 
-  return {
-    isDark,
-    colors: {
-      background: isDark ? '#1a1a1a' : '#f9f9f9',
-      card: isDark ? '#2a2a2a' : '#fff',
-      text: isDark ? '#fff' : '#1a1a1a',
-      subtitle: isDark ? '#aaa' : '#666',
-      border: isDark ? '#444' : '#e0e0e0',
-      tabBar: isDark ? '#1e1e1e' : '#fff',
-    },
+  const colors = isDark ? {
+    // Dark mode colors
+    background: '#0A1F1F',
+    card: '#112A2A',
+    text: '#E0FFF4',
+    subtitle: '#80CBC4',
+    border: '#1A3A3A',
+    input: '#0D2525',
+  } : {
+    // Light mode colors — Teal and Mint Green theme
+    background: '#F0FFF4',
+    card: '#E0F2F1',
+    text: '#004D40',
+    subtitle: '#00695C',
+    border: '#B2DFDB',
+    input: '#FFFFFF',
   };
-}
+
+  return { colors, isDark };
+};
