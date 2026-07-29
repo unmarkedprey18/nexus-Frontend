@@ -52,11 +52,8 @@ export default function SubscriptionScreen() {
       Alert.alert('Oops', 'Please enter a valid 10 digit phone number!');
       return;
     }
-
     try {
       setLoading(true);
-
-      // Try Paystack first
       const response = await api.post('/subscription/initiate', {
         plan: selectedPlan,
         subscriptionType: selectedPlan.toUpperCase(),
@@ -65,40 +62,28 @@ export default function SubscriptionScreen() {
         currency: 'GHS',
         phoneNumber: phoneNumber.trim(),
       });
-
-      console.log('Paystack response:', JSON.stringify(response.data));
-
       const authorizationUrl =
         response.data?.data?.authorizationUrl ||
         response.data?.authorizationUrl ||
         response.data?.data?.authorization_url ||
         response.data?.authorization_url || '';
-
-      console.log('Authorization URL:', authorizationUrl);
-
       setLoading(false);
-
       if (authorizationUrl && authorizationUrl.startsWith('https://checkout.paystack.com')) {
-        // Open real Paystack checkout
         await WebBrowser.openBrowserAsync(authorizationUrl);
         Alert.alert(
           'Payment Status',
           'Did you complete the payment?',
           [
-            { text: '✅ Yes I paid!', onPress: () => setStep('success') },
-            { text: '❌ No cancel', style: 'cancel' },
+            { text: 'Yes I paid!', onPress: () => setStep('success') },
+            { text: 'No cancel', style: 'cancel' },
           ]
         );
       } else {
-        // Paystack URL not valid — go to manual payment
         setUseManual(true);
         setStep('payment');
       }
-
     } catch (err: any) {
       setLoading(false);
-      console.log('Paystack error:', JSON.stringify(err.response?.data));
-      // Paystack failed — go to manual payment
       setUseManual(true);
       setStep('payment');
     }
@@ -106,8 +91,8 @@ export default function SubscriptionScreen() {
 
   const handleConfirmPayment = () => {
     Alert.alert(
-      '✅ Confirm Payment',
-      `Have you sent GH₵${selectedPlanData?.price} to ${MOMO_NAME} on MTN MoMo?\n\nReference: ${reference}`,
+      'Confirm Payment',
+      `Have you sent GH${selectedPlanData?.price} to ${MOMO_NAME} on MTN MoMo?\n\nReference: ${reference}`,
       [
         { text: 'Yes I have paid!', onPress: () => setStep('success') },
         { text: 'Not yet', style: 'cancel' },
@@ -119,7 +104,7 @@ export default function SubscriptionScreen() {
     const message =
       `Hello Nexus Support,\n\n` +
       `I have made a payment for the ${selectedPlanData?.name} subscription plan.\n\n` +
-      `Amount: GH₵${selectedPlanData?.price}\n` +
+      `Amount: GH${selectedPlanData?.price}\n` +
       `Network: MTN Mobile Money\n` +
       `Paid to: ${MOMO_NAME} (${MOMO_NUMBER})\n` +
       `Reference: ${reference}\n` +
@@ -135,10 +120,10 @@ export default function SubscriptionScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={80} color="#1D9E75" />
+            <Ionicons name="checkmark-circle" size={80} color="#008080" />
           </View>
           <Text style={[styles.successTitle, { color: colors.text }]}>
-            Payment Submitted! 🎉
+            Payment Submitted!
           </Text>
           <Text style={[styles.successSubtitle, { color: colors.subtitle }]}>
             Your Nexus Premium account will be activated within 24 hours after payment verification!
@@ -207,7 +192,7 @@ export default function SubscriptionScreen() {
           </View>
           <View style={[styles.orderRow, styles.orderTotalRow]}>
             <Text style={styles.orderTotalLabel}>Total</Text>
-            <Text style={styles.orderTotalValue}>GH₵ {selectedPlanData?.price}</Text>
+            <Text style={styles.orderTotalValue}>GH {selectedPlanData?.price}</Text>
           </View>
         </View>
 
@@ -226,14 +211,14 @@ export default function SubscriptionScreen() {
               <Text style={styles.instructionNumberText}>2</Text>
             </View>
             <Text style={[styles.instructionText, { color: colors.text }]}>
-              Send <Text style={{ fontWeight: '700', color: '#534AB7' }}>
-                GH₵ {selectedPlanData?.price}
+              Send <Text style={{ fontWeight: '700', color: '#008080' }}>
+                GH {selectedPlanData?.price}
               </Text> to this number:
             </Text>
           </View>
           <View style={[styles.momoBox, { backgroundColor: colors.background }]}>
             <View style={styles.momoNetworkBadge}>
-              <Text style={styles.momoNetworkText}>🟡 MTN MoMo</Text>
+              <Text style={styles.momoNetworkText}>MTN MoMo</Text>
             </View>
             <Text style={styles.momoNumber}>{MOMO_NUMBER}</Text>
             <Text style={styles.momoName}>{MOMO_NAME}</Text>
@@ -266,8 +251,8 @@ export default function SubscriptionScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.supportButton} onPress={handleContactSupport}>
-          <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
-          <Text style={[styles.supportButtonText, { color: '#25D366' }]}>
+          <Ionicons name="logo-whatsapp" size={20} color="#008080" />
+          <Text style={[styles.supportButtonText, { color: '#008080' }]}>
             Contact Support on WhatsApp
           </Text>
         </TouchableOpacity>
@@ -292,9 +277,10 @@ export default function SubscriptionScreen() {
         <Text style={styles.headerTitle}>Nexus Premium</Text>
       </View>
 
+      {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.crownContainer}>
-          <Ionicons name="star" size={48} color="#FFC107" />
+          <Ionicons name="star" size={48} color="#B2EBF2" />
         </View>
         <Text style={styles.heroTitle}>Upgrade to Premium</Text>
         <Text style={styles.heroSubtitle}>
@@ -306,17 +292,17 @@ export default function SubscriptionScreen() {
       <View style={[styles.comparisonCard, { backgroundColor: colors.card }]}>
         <View style={styles.comparisonHeader}>
           <Text style={[styles.comparisonTitle, { color: colors.text }]}>Free</Text>
-          <Text style={styles.comparisonTitlePremium}>Premium ⭐</Text>
+          <Text style={styles.comparisonTitlePremium}>Premium</Text>
         </View>
         <View style={[styles.comparisonRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.comparisonFeature, { color: colors.text }]}>Live Camera</Text>
           <Ionicons name="close-circle" size={20} color="#E24B4A" />
-          <Ionicons name="checkmark-circle" size={20} color="#1D9E75" />
+          <Ionicons name="checkmark-circle" size={20} color="#008080" />
         </View>
         <View style={[styles.comparisonRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.comparisonFeature, { color: colors.text }]}>Offline Videos</Text>
           <Ionicons name="close-circle" size={20} color="#E24B4A" />
-          <Ionicons name="checkmark-circle" size={20} color="#1D9E75" />
+          <Ionicons name="checkmark-circle" size={20} color="#008080" />
         </View>
         <View style={[styles.comparisonRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.comparisonFeature, { color: colors.text }]}>Sign Language (daily)</Text>
@@ -341,7 +327,7 @@ export default function SubscriptionScreen() {
         {premiumFeatures.map((feature, index) => (
           <View key={index} style={[styles.featureCard, { backgroundColor: colors.card }]}>
             <View style={styles.featureIconCircle}>
-              <Ionicons name={feature.icon as any} size={24} color="#534AB7" />
+              <Ionicons name={feature.icon as any} size={24} color="#008080" />
             </View>
             <Text style={[styles.featureTitle, { color: colors.text }]}>{feature.title}</Text>
             <Text style={[styles.featureDesc, { color: colors.subtitle }]}>{feature.desc}</Text>
@@ -382,7 +368,7 @@ export default function SubscriptionScreen() {
               </View>
             </View>
             <Text style={[styles.planPrice, selectedPlan === plan.id && styles.planPriceActive]}>
-              GH₵ {plan.price}
+              GH {plan.price}
             </Text>
           </TouchableOpacity>
         ))}
@@ -391,11 +377,11 @@ export default function SubscriptionScreen() {
       {/* Phone number input */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Mobile Money Number</Text>
       <View style={[styles.phoneContainer, { backgroundColor: colors.card }]}>
-        <Ionicons name="call-outline" size={20} color="#534AB7" />
+        <Ionicons name="call-outline" size={20} color="#008080" />
         <TextInput
           style={[styles.phoneInput, { color: colors.text }]}
           placeholder="Enter your mobile money number"
-          placeholderTextColor="#999"
+          placeholderTextColor="#80CBC4"
           value={phoneNumber}
           onChangeText={setPhoneNumber}
           keyboardType="phone-pad"
@@ -418,32 +404,32 @@ export default function SubscriptionScreen() {
           <>
             <Ionicons name="lock-closed-outline" size={20} color="#fff" />
             <Text style={styles.subscribeButtonText}>
-              Pay GH₵ {selectedPlanData?.price} with Paystack
+              Pay GH {selectedPlanData?.price} with Paystack
             </Text>
           </>
         )}
       </TouchableOpacity>
 
-      {/* Supported payment methods */}
+      {/* Payment methods */}
       <View style={[styles.paymentMethods, { backgroundColor: colors.card }]}>
         <Text style={[styles.paymentMethodsTitle, { color: colors.subtitle }]}>
           Supported Payment Methods
         </Text>
         <View style={styles.paymentMethodsRow}>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>🟡</Text>
+            <Ionicons name="phone-portrait-outline" size={24} color="#008080" />
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>MTN MoMo</Text>
           </View>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>🔴</Text>
+            <Ionicons name="phone-portrait-outline" size={24} color="#008080" />
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>Vodafone</Text>
           </View>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>🔵</Text>
+            <Ionicons name="phone-portrait-outline" size={24} color="#008080" />
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>AirtelTigo</Text>
           </View>
           <View style={styles.paymentMethod}>
-            <Text style={styles.paymentMethodIcon}>💳</Text>
+            <Ionicons name="card-outline" size={24} color="#008080" />
             <Text style={[styles.paymentMethodName, { color: colors.text }]}>Card</Text>
           </View>
         </View>
@@ -459,14 +445,14 @@ export default function SubscriptionScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingTop: 60, paddingBottom: 20, paddingHorizontal: 24,
     flexDirection: 'row', alignItems: 'center', gap: 16,
   },
   backButton: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: '#fff' },
   hero: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingBottom: 32, paddingHorizontal: 24, alignItems: 'center',
   },
   crownContainer: {
@@ -475,41 +461,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
   heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 8, textAlign: 'center' },
-  heroSubtitle: { fontSize: 14, color: '#d0ccff', textAlign: 'center', lineHeight: 22 },
+  heroSubtitle: { fontSize: 14, color: '#B2EBF2', textAlign: 'center', lineHeight: 22 },
   comparisonCard: {
     marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
-    marginTop: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    marginTop: 20, shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   comparisonHeader: {
     flexDirection: 'row', padding: 14,
-    backgroundColor: '#534AB7', justifyContent: 'flex-end', gap: 32,
+    backgroundColor: '#006666', justifyContent: 'flex-end', gap: 32,
   },
-  comparisonTitle: { fontSize: 14, fontWeight: '700', color: '#d0ccff', flex: 1, marginLeft: 8 },
-  comparisonTitlePremium: { fontSize: 14, fontWeight: '700', color: '#FFC107' },
+  comparisonTitle: { fontSize: 14, fontWeight: '700', color: '#B2EBF2', flex: 1, marginLeft: 8 },
+  comparisonTitlePremium: { fontSize: 14, fontWeight: '700', color: '#fff' },
   comparisonRow: {
     flexDirection: 'row', alignItems: 'center',
     padding: 14, borderBottomWidth: 1, gap: 8,
   },
   comparisonFeature: { flex: 1, fontSize: 13, fontWeight: '500' },
   comparisonLimit: { fontSize: 12, fontWeight: '600' },
-  comparisonUnlimited: { fontSize: 12, fontWeight: '700', color: '#1D9E75' },
+  comparisonUnlimited: { fontSize: 12, fontWeight: '700', color: '#008080' },
   sectionTitle: {
     fontSize: 16, fontWeight: '700',
     marginHorizontal: 16, marginTop: 24, marginBottom: 12,
   },
-  featuresGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 16, gap: 12,
-  },
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   featureCard: {
     width: '47%', borderRadius: 16, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   featureIconCircle: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#ede9ff',
+    backgroundColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center', marginBottom: 10,
   },
   featureTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
@@ -520,56 +503,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     position: 'relative',
   },
-  selectedPlan: { borderColor: '#534AB7', borderWidth: 2 },
+  selectedPlan: { borderColor: '#008080', borderWidth: 2 },
   popularBadge: {
     position: 'absolute', top: -10, left: 16,
-    backgroundColor: '#534AB7', paddingHorizontal: 10,
+    backgroundColor: '#008080', paddingHorizontal: 10,
     paddingVertical: 3, borderRadius: 10,
   },
   popularBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   savingBadge: {
     position: 'absolute', top: -10, right: 16,
-    backgroundColor: '#1D9E75', paddingHorizontal: 10,
+    backgroundColor: '#006666', paddingHorizontal: 10,
     paddingVertical: 3, borderRadius: 10,
   },
   savingBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   planLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   planRadio: {
     width: 22, height: 22, borderRadius: 11,
-    borderWidth: 2, borderColor: '#ccc',
+    borderWidth: 2, borderColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center',
   },
-  planRadioActive: { borderColor: '#534AB7' },
-  planRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#534AB7' },
+  planRadioActive: { borderColor: '#008080' },
+  planRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#008080' },
   planName: { fontSize: 15, fontWeight: '700' },
   planDuration: { fontSize: 12, marginTop: 2 },
-  planPrice: { fontSize: 18, fontWeight: '800', color: '#999' },
-  planPriceActive: { color: '#534AB7' },
+  planPrice: { fontSize: 18, fontWeight: '800', color: '#B2DFDB' },
+  planPriceActive: { color: '#008080' },
   phoneContainer: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     marginHorizontal: 16, borderRadius: 12, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   phoneInput: { flex: 1, fontSize: 15 },
   phoneHint: { fontSize: 12, marginHorizontal: 16, marginTop: 6, lineHeight: 18 },
   subscribeButton: {
-    backgroundColor: '#534AB7', flexDirection: 'row',
+    backgroundColor: '#008080', flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
     gap: 8, margin: 16, marginTop: 20, padding: 18, borderRadius: 14,
-    shadowColor: '#534AB7', shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   subscribeButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   paymentMethods: {
     marginHorizontal: 16, borderRadius: 16, padding: 16, marginTop: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   paymentMethodsTitle: { fontSize: 13, marginBottom: 12, textAlign: 'center' },
   paymentMethodsRow: { flexDirection: 'row', justifyContent: 'space-around' },
   paymentMethod: { alignItems: 'center', gap: 4 },
-  paymentMethodIcon: { fontSize: 24 },
   paymentMethodName: { fontSize: 11, fontWeight: '600' },
   termsNote: {
     fontSize: 12, textAlign: 'center',
@@ -577,22 +559,19 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     margin: 16, borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   orderTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
   orderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   orderLabel: { fontSize: 14 },
   orderValue: { fontSize: 14, fontWeight: '600' },
-  orderTotalRow: {
-    borderTopWidth: 1, borderTopColor: '#eee',
-    paddingTop: 10, marginTop: 4,
-  },
-  orderTotalLabel: { fontSize: 16, fontWeight: '700', color: '#534AB7' },
-  orderTotalValue: { fontSize: 20, fontWeight: '800', color: '#534AB7' },
+  orderTotalRow: { borderTopWidth: 1, borderTopColor: '#B2DFDB', paddingTop: 10, marginTop: 4 },
+  orderTotalLabel: { fontSize: 16, fontWeight: '700', color: '#008080' },
+  orderTotalValue: { fontSize: 20, fontWeight: '800', color: '#008080' },
   instructionsCard: {
     marginHorizontal: 16, borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, marginBottom: 8,
   },
   instructionStep: {
@@ -601,43 +580,37 @@ const styles = StyleSheet.create({
   },
   instructionNumber: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   instructionNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   instructionText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  momoBox: {
-    borderRadius: 12, padding: 16, marginBottom: 14, alignItems: 'center',
-  },
+  momoBox: { borderRadius: 12, padding: 16, marginBottom: 14, alignItems: 'center' },
   momoNetworkBadge: {
-    backgroundColor: '#FFC107', paddingHorizontal: 12,
+    backgroundColor: '#008080', paddingHorizontal: 12,
     paddingVertical: 4, borderRadius: 20, marginBottom: 10,
   },
-  momoNetworkText: { fontSize: 12, fontWeight: '700', color: '#1a1a1a' },
+  momoNetworkText: { fontSize: 12, fontWeight: '700', color: '#fff' },
   momoNumber: {
-    fontSize: 28, fontWeight: '800', color: '#534AB7',
+    fontSize: 28, fontWeight: '800', color: '#008080',
     letterSpacing: 2, marginBottom: 4,
   },
-  momoName: { fontSize: 14, fontWeight: '600', color: '#666' },
-  referenceBox: {
-    borderRadius: 10, padding: 14, marginBottom: 14, alignItems: 'center',
-  },
-  referenceLabel: { fontSize: 12, color: '#999', marginBottom: 6 },
-  referenceNumber: {
-    fontSize: 13, fontWeight: '700', color: '#534AB7', letterSpacing: 1,
-  },
+  momoName: { fontSize: 14, fontWeight: '600', color: '#006666' },
+  referenceBox: { borderRadius: 10, padding: 14, marginBottom: 14, alignItems: 'center' },
+  referenceLabel: { fontSize: 12, color: '#80CBC4', marginBottom: 6 },
+  referenceNumber: { fontSize: 13, fontWeight: '700', color: '#008080', letterSpacing: 1 },
   confirmButton: {
-    backgroundColor: '#1D9E75', flexDirection: 'row',
+    backgroundColor: '#008080', flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
     gap: 8, margin: 16, padding: 18, borderRadius: 14,
-    shadowColor: '#1D9E75', shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   confirmButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   supportButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, marginHorizontal: 16, padding: 14, borderRadius: 14,
-    borderWidth: 1, borderColor: '#25D366', marginBottom: 8,
+    borderWidth: 1, borderColor: '#008080', marginBottom: 8,
   },
   supportButtonText: { fontSize: 15, fontWeight: '600' },
   successContainer: {
@@ -645,7 +618,7 @@ const styles = StyleSheet.create({
   },
   successIcon: {
     width: 120, height: 120, borderRadius: 60,
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center', marginBottom: 24,
   },
   successTitle: { fontSize: 24, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
@@ -654,7 +627,7 @@ const styles = StyleSheet.create({
   successCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
   successStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   successStepNumber: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#534AB7',
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#008080',
     justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   successStepNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
@@ -666,7 +639,7 @@ const styles = StyleSheet.create({
   },
   whatsappButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   doneButton: {
-    backgroundColor: '#534AB7', padding: 16,
+    backgroundColor: '#008080', padding: 16,
     borderRadius: 12, width: '100%', alignItems: 'center',
   },
   doneButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
