@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
   TouchableOpacity, Alert, ActivityIndicator, Image,
@@ -11,14 +11,13 @@ import * as ImagePicker from 'expo-image-picker';
 import api from '../../services/api';
 import { Audio } from 'expo-av';
 
-// All sign language videos
 const allSignLanguageVideos = [
   { id: '1', title: 'ASL Alphabet A to Z', channel: 'Bill Vicars', thumbnail: 'https://img.youtube.com/vi/tkMg8g8vVUo/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=tkMg8g8vVUo', duration: '8:24' },
   { id: '2', title: 'Basic ASL Signs for Beginners', channel: 'Bill Vicars', thumbnail: 'https://img.youtube.com/vi/0FcwzMq4iWg/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=0FcwzMq4iWg', duration: '15:42' },
   { id: '3', title: 'Learn Sign Language in 25 Minutes', channel: 'Learn How to Sign', thumbnail: 'https://img.youtube.com/vi/ianCxd65jNY/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=ianCxd65jNY', duration: '25:00' },
   { id: '4', title: 'ASL Numbers 1 to 30', channel: 'Bill Vicars', thumbnail: 'https://img.youtube.com/vi/pYQHHQP0oFM/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=pYQHHQP0oFM', duration: '7:35' },
   { id: '5', title: 'Top 10 ASL Signs You Need to Know', channel: 'Sign Language 101', thumbnail: 'https://img.youtube.com/vi/HEoAmVRaHoA/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=HEoAmVRaHoA', duration: '10:00' },
-  { id: '6', title: 'ASL Greetings — Hello Goodbye Thank You', channel: 'Bill Vicars', thumbnail: 'https://img.youtube.com/vi/UmEDxhBFD1k/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=UmEDxhBFD1k', duration: '9:12' },
+  { id: '6', title: 'ASL Greetings', channel: 'Bill Vicars', thumbnail: 'https://img.youtube.com/vi/UmEDxhBFD1k/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=UmEDxhBFD1k', duration: '9:12' },
   { id: '7', title: 'Sign Language for Kids', channel: 'Signing Savvy', thumbnail: 'https://img.youtube.com/vi/8LoNSsAWMM8/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=8LoNSsAWMM8', duration: '6:00' },
   { id: '8', title: 'Medical Signs in ASL', channel: 'ASL Meredith', thumbnail: 'https://img.youtube.com/vi/qkBMQkFBMPs/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=qkBMQkFBMPs', duration: '10:15' },
   { id: '9', title: 'Emergency ASL Signs', channel: 'Sign Language 101', thumbnail: 'https://img.youtube.com/vi/1RVDmMkbSOI/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=1RVDmMkbSOI', duration: '6:48' },
@@ -31,7 +30,6 @@ const allSignLanguageVideos = [
   { id: '16', title: 'Body Language and Expressions in ASL', channel: 'ASL Meredith', thumbnail: 'https://img.youtube.com/vi/v1desDduz5M/hqdefault.jpg', url: 'https://www.youtube.com/watch?v=v1desDduz5M', duration: '12:30' },
 ];
 
-// Shuffle array helper
 const shuffleArray = (array: any[]) => {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -41,19 +39,18 @@ const shuffleArray = (array: any[]) => {
   return shuffled;
 };
 
-// Supported languages
 const languages = [
-  { code: 'en', name: '🇺🇸 English' },
-  { code: 'es', name: '🇪🇸 Spanish' },
-  { code: 'fr', name: '🇫🇷 French' },
-  { code: 'de', name: '🇩🇪 German' },
-  { code: 'it', name: '🇮🇹 Italian' },
-  { code: 'pt', name: '🇧🇷 Portuguese' },
-  { code: 'zh', name: '🇨🇳 Chinese' },
-  { code: 'ja', name: '🇯🇵 Japanese' },
-  { code: 'ko', name: '🇰🇷 Korean' },
-  { code: 'ar', name: '🇸🇦 Arabic' },
-  { code: 'ru', name: '🇷🇺 Russian' },
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'it', name: 'Italian' },
+  { code: 'pt', name: 'Portuguese' },
+  { code: 'zh', name: 'Chinese' },
+  { code: 'ja', name: 'Japanese' },
+  { code: 'ko', name: 'Korean' },
+  { code: 'ar', name: 'Arabic' },
+  { code: 'ru', name: 'Russian' },
 ];
 
 export default function TranslateScreen() {
@@ -122,10 +119,6 @@ export default function TranslateScreen() {
     }
   };
 
-  const handleOpenVideo = async (url: string) => {
-    await WebBrowser.openBrowserAsync(url);
-  };
-
   const handleTranslateText = async () => {
     if (!text.trim()) { Alert.alert('Oops', 'Please type some text first!'); return; }
     try {
@@ -150,7 +143,6 @@ export default function TranslateScreen() {
       setSignAnimation(data?.signAnimation || data?.result || 'No sign data available');
       setShowResults(true);
     } catch (err: any) {
-      // Show YouTube guide even if backend fails
       setShowResults(true);
     } finally { setLoading(false); }
   };
@@ -223,67 +215,36 @@ export default function TranslateScreen() {
     } finally { setLoading(false); }
   };
 
-  // Open camera to record sign language video and send to backend
   const handleOpenCamera = async (mode: 'live' | 'record') => {
     try {
-      // Ask for camera permission
       const { granted } = await ImagePicker.requestCameraPermissionsAsync();
       if (!granted) {
         Alert.alert('Permission needed', 'Please allow camera access to record sign language.');
         return;
       }
-
       setInterpretLoading(true);
-
-      // Open camera to record video — max 30 seconds
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
         videoMaxDuration: 30,
         quality: 0.7,
       });
-
-      if (result.canceled) {
-        setInterpretLoading(false);
-        return;
-      }
-
+      if (result.canceled) { setInterpretLoading(false); return; }
       const videoUri = result.assets[0].uri;
-
-      Alert.alert('🔄 Processing', 'Sending video to AI for interpretation...');
-
-      // Send video to backend MediaPipe endpoint
       const formData = new FormData();
-      formData.append('video', {
-        uri: videoUri,
-        type: 'video/mp4',
-        name: 'sign_video.mp4',
-      } as any);
+      formData.append('video', { uri: videoUri, type: 'video/mp4', name: 'sign_video.mp4' } as any);
       formData.append('language', 'ASL');
-
       const response = await api.post('/translate/sign-to-text/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000, // 2 minutes for video processing
-      
+        timeout: 120000,
       });
-
       const data = response.data?.data || response.data;
       const interpreted = data?.interpretedText || data?.result || 'Could not interpret signs';
-
-      // Show the interpreted text
       setSignAnimation(interpreted);
-
-      // Speak the result aloud so normal person can hear
       Speech.speak(interpreted, { language: 'en', volume: 1.0 });
-
     } catch (err: any) {
-      Alert.alert(
-        'Interpretation Failed',
-        err.response?.data?.error || 'Could not interpret signs. Please try again!'
-      );
-    } finally {
-      setInterpretLoading(false);
-    }
+      Alert.alert('Interpretation Failed', err.response?.data?.error || 'Could not interpret signs. Please try again!');
+    } finally { setInterpretLoading(false); }
   };
 
   const handleClear = () => {
@@ -300,23 +261,27 @@ export default function TranslateScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Translate</Text>
-        <Text style={styles.headerSubtitle}>Powered by Groq AI + Edge TTS 🤟</Text>
+        <Text style={styles.headerSubtitle}>Powered by Groq AI + Edge TTS</Text>
       </View>
 
       {/* Tab selector */}
       <View style={[styles.tabRow, { backgroundColor: colors.card }]}>
         {[
-          { key: 'translate', icon: '🌍', label: 'Translate' },
-          { key: 'sign', icon: '🤟', label: 'Sign' },
-          { key: 'speech', icon: '🎤', label: 'Speech' },
-          { key: 'videos', icon: '📺', label: 'Videos' },
+          { key: 'translate', icon: 'language-outline', label: 'Translate' },
+          { key: 'sign', icon: 'hand-left-outline', label: 'Sign' },
+          { key: 'speech', icon: 'mic-outline', label: 'Speech' },
+          { key: 'videos', icon: 'videocam-outline', label: 'Videos' },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => { setActiveTab(tab.key as any); setShowResults(false); }}
           >
-            <Text style={styles.tabIcon}>{tab.icon}</Text>
+            <Ionicons
+              name={tab.icon as any}
+              size={18}
+              color={activeTab === tab.key ? '#fff' : '#008080'}
+            />
             <Text style={[styles.tabLabel, activeTab === tab.key && styles.activeTabLabel]}>
               {tab.label}
             </Text>
@@ -324,7 +289,7 @@ export default function TranslateScreen() {
         ))}
       </View>
 
-      {/* ── TRANSLATE TAB ── */}
+      {/* TRANSLATE TAB */}
       {activeTab === 'translate' && (
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <Text style={[styles.sectionLabel, { color: colors.text }]}>From:</Text>
@@ -332,11 +297,11 @@ export default function TranslateScreen() {
             style={[styles.langButton, { borderColor: colors.border }]}
             onPress={() => { setShowLangPicker(!showLangPicker); setShowTargetPicker(false); }}
           >
-            <Ionicons name="language-outline" size={18} color="#534AB7" />
+            <Ionicons name="language-outline" size={18} color="#008080" />
             <Text style={[styles.langButtonText, { color: colors.text }]}>
-              {languages.find(l => l.code === selectedLang)?.name || '🇺🇸 English'}
+              {languages.find(l => l.code === selectedLang)?.name || 'English'}
             </Text>
-            <Ionicons name={showLangPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#999" />
+            <Ionicons name={showLangPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#80CBC4" />
           </TouchableOpacity>
           {showLangPicker && (
             <View style={[styles.langList, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -347,7 +312,7 @@ export default function TranslateScreen() {
                   onPress={() => { setSelectedLang(lang.code); setShowLangPicker(false); }}
                 >
                   <Text style={[styles.langItemText, { color: colors.text }]}>{lang.name}</Text>
-                  {selectedLang === lang.code && <Ionicons name="checkmark-circle" size={18} color="#534AB7" />}
+                  {selectedLang === lang.code && <Ionicons name="checkmark-circle" size={18} color="#008080" />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -358,11 +323,11 @@ export default function TranslateScreen() {
             style={[styles.langButton, { borderColor: colors.border }]}
             onPress={() => { setShowTargetPicker(!showTargetPicker); setShowLangPicker(false); }}
           >
-            <Ionicons name="language-outline" size={18} color="#1D9E75" />
+            <Ionicons name="language-outline" size={18} color="#006666" />
             <Text style={[styles.langButtonText, { color: colors.text }]}>
-              {languages.find(l => l.code === targetLang)?.name || '🇪🇸 Spanish'}
+              {languages.find(l => l.code === targetLang)?.name || 'Spanish'}
             </Text>
-            <Ionicons name={showTargetPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#999" />
+            <Ionicons name={showTargetPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#80CBC4" />
           </TouchableOpacity>
           {showTargetPicker && (
             <View style={[styles.langList, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -373,7 +338,7 @@ export default function TranslateScreen() {
                   onPress={() => { setTargetLang(lang.code); setShowTargetPicker(false); }}
                 >
                   <Text style={[styles.langItemText, { color: colors.text }]}>{lang.name}</Text>
-                  {targetLang === lang.code && <Ionicons name="checkmark-circle" size={18} color="#1D9E75" />}
+                  {targetLang === lang.code && <Ionicons name="checkmark-circle" size={18} color="#006666" />}
                 </TouchableOpacity>
               ))}
             </View>
@@ -382,7 +347,7 @@ export default function TranslateScreen() {
           <TextInput
             style={[styles.input, { borderColor: colors.border, color: colors.text, marginTop: 12 }]}
             placeholder="Type text to translate..."
-            placeholderTextColor="#999"
+            placeholderTextColor="#80CBC4"
             value={text}
             onChangeText={setText}
             multiline
@@ -394,11 +359,11 @@ export default function TranslateScreen() {
               style={[styles.clearButton, { borderColor: colors.border, backgroundColor: colors.background }]}
               onPress={handleClear}
             >
-              <Ionicons name="close-circle-outline" size={18} color="#666" />
+              <Ionicons name="close-circle-outline" size={18} color="#008080" />
               <Text style={[styles.clearButtonText, { color: colors.subtitle }]}>Clear</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.speakButton, { backgroundColor: isSpeaking ? '#E24B4A' : '#1D9E75' }]}
+              style={[styles.speakButton, { backgroundColor: isSpeaking ? '#006666' : '#008080' }]}
               onPress={handleTextToSpeech}
               disabled={loading}
             >
@@ -431,17 +396,15 @@ export default function TranslateScreen() {
         </View>
       )}
 
-      {/* ── SIGN TAB ── */}
+      {/* SIGN TAB */}
       {activeTab === 'sign' && (
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-
-          {/* Mode selector */}
           <View style={styles.signModeRow}>
             <TouchableOpacity
               style={[styles.signModeButton, signMode === 'interpret' && styles.signModeActive]}
               onPress={() => setSignMode('interpret')}
             >
-              <Ionicons name="eye-outline" size={18} color={signMode === 'interpret' ? '#fff' : '#534AB7'} />
+              <Ionicons name="eye-outline" size={18} color={signMode === 'interpret' ? '#fff' : '#008080'} />
               <Text style={[styles.signModeText, signMode === 'interpret' && styles.signModeTextActive]}>
                 Interpret Signs
               </Text>
@@ -450,24 +413,19 @@ export default function TranslateScreen() {
               style={[styles.signModeButton, signMode === 'reply' && styles.signModeActive]}
               onPress={() => setSignMode('reply')}
             >
-              <Ionicons name="hand-left-outline" size={18} color={signMode === 'reply' ? '#fff' : '#534AB7'} />
+              <Ionicons name="hand-left-outline" size={18} color={signMode === 'reply' ? '#fff' : '#008080'} />
               <Text style={[styles.signModeText, signMode === 'reply' && styles.signModeTextActive]}>
                 Reply with Signs
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* ── INTERPRET MODE ── */}
           {signMode === 'interpret' && (
             <View>
-              <Text style={[styles.sectionLabel, { color: colors.text }]}>
-                🤟 Sign Language Interpreter
-              </Text>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Sign Language Interpreter</Text>
               <Text style={[styles.speechHint, { color: colors.subtitle }]}>
                 Record the deaf person signing — AI will interpret their signs into text and speak it aloud!
               </Text>
-
-              {/* Camera buttons */}
               <View style={styles.cameraButtonRow}>
                 <TouchableOpacity
                   style={[styles.cameraButton, { backgroundColor: colors.background, borderColor: colors.border }]}
@@ -476,9 +434,9 @@ export default function TranslateScreen() {
                 >
                   <View style={styles.cameraIconCircle}>
                     {interpretLoading ? (
-                      <ActivityIndicator size="small" color="#534AB7" />
+                      <ActivityIndicator size="small" color="#008080" />
                     ) : (
-                      <Ionicons name="videocam-outline" size={24} color="#534AB7" />
+                      <Ionicons name="videocam-outline" size={24} color="#008080" />
                     )}
                   </View>
                   <Text style={[styles.cameraButtonTitle, { color: colors.text }]}>
@@ -488,14 +446,13 @@ export default function TranslateScreen() {
                     Record then interpret
                   </Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={[styles.cameraButton, { backgroundColor: colors.background, borderColor: colors.border }]}
                   onPress={() => handleOpenCamera('live')}
                   disabled={interpretLoading}
                 >
                   <View style={styles.cameraIconCircle}>
-                    <Ionicons name="radio-outline" size={24} color="#E24B4A" />
+                    <Ionicons name="radio-outline" size={24} color="#006666" />
                   </View>
                   <Text style={[styles.cameraButtonTitle, { color: colors.text }]}>Live Camera</Text>
                   <Text style={[styles.cameraButtonSubtitle, { color: colors.subtitle }]}>
@@ -504,10 +461,9 @@ export default function TranslateScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Interpretation result */}
               {signAnimation !== '' && (
                 <View style={styles.resultBox}>
-                  <Text style={styles.resultLabel}>🤟 AI Interpreted:</Text>
+                  <Text style={styles.resultLabel}>AI Interpreted:</Text>
                   <Text style={styles.resultText}>{signAnimation}</Text>
                   <View style={styles.resultActions}>
                     <TouchableOpacity
@@ -518,7 +474,7 @@ export default function TranslateScreen() {
                       <Text style={styles.speakResultText}>Speak Aloud</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.speakResultButton, { backgroundColor: '#534AB7' }]}
+                      style={[styles.speakResultButton, { backgroundColor: '#006666' }]}
                       onPress={() => { setSignMode('reply'); setText(signAnimation); }}
                     >
                       <Ionicons name="arrow-undo-outline" size={16} color="#fff" />
@@ -528,9 +484,8 @@ export default function TranslateScreen() {
                 </View>
               )}
 
-              {/* How it works */}
               <View style={[styles.aiNotice, { backgroundColor: colors.background }]}>
-                <Ionicons name="information-circle-outline" size={18} color="#534AB7" />
+                <Ionicons name="information-circle-outline" size={18} color="#008080" />
                 <Text style={[styles.aiNoticeText, { color: colors.subtitle }]}>
                   Tap Record Video, point camera at the deaf person signing, then stop recording. AI will interpret the signs into text and speak it aloud!
                 </Text>
@@ -538,26 +493,21 @@ export default function TranslateScreen() {
             </View>
           )}
 
-          {/* ── REPLY MODE ── */}
           {signMode === 'reply' && (
             <View>
-              <Text style={[styles.sectionLabel, { color: colors.text }]}>
-                💬 Reply with Sign Language
-              </Text>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>Reply with Sign Language</Text>
               <Text style={[styles.speechHint, { color: colors.subtitle }]}>
                 Type what you want to say — we will show you how to sign each word!
               </Text>
-
               <TextInput
                 style={[styles.input, { borderColor: colors.border, color: colors.text }]}
                 placeholder="Type your reply here..."
-                placeholderTextColor="#999"
+                placeholderTextColor="#80CBC4"
                 value={text}
                 onChangeText={setText}
                 multiline
                 numberOfLines={3}
               />
-
               <TouchableOpacity
                 style={[styles.translateButton, { marginTop: 12 }]}
                 onPress={handleTextToSign}
@@ -571,11 +521,10 @@ export default function TranslateScreen() {
                 )}
               </TouchableOpacity>
 
-              {/* Sign guide — word by word cards */}
               {text.trim() !== '' && (
                 <View style={[styles.signGuide, { backgroundColor: colors.background }]}>
                   <Text style={[styles.signGuideTitle, { color: colors.text }]}>
-                    📖 How to sign: "{text}"
+                    How to sign: "{text}"
                   </Text>
                   {text.trim().split(' ').filter(w => w.trim()).slice(0, 8).map((word, index) => (
                     <TouchableOpacity
@@ -617,10 +566,10 @@ export default function TranslateScreen() {
         </View>
       )}
 
-      {/* ── SPEECH TAB ── */}
+      {/* SPEECH TAB */}
       {activeTab === 'speech' && (
         <View style={[styles.card, { backgroundColor: colors.card }]}>
-          <Text style={[styles.sectionLabel, { color: colors.text }]}>Speech to Text:</Text>
+          <Text style={[styles.sectionLabel, { color: colors.text }]}>Speech to Text</Text>
           <Text style={[styles.speechHint, { color: colors.subtitle }]}>
             Tap the mic to record, then stop to transcribe using Groq Whisper AI
           </Text>
@@ -628,11 +577,11 @@ export default function TranslateScreen() {
             style={[styles.langButton, { borderColor: colors.border, marginBottom: 16 }]}
             onPress={() => setShowLangPicker(!showLangPicker)}
           >
-            <Ionicons name="language-outline" size={18} color="#534AB7" />
+            <Ionicons name="language-outline" size={18} color="#008080" />
             <Text style={[styles.langButtonText, { color: colors.text }]}>
-              {languages.find(l => l.code === selectedLang)?.name || '🇺🇸 English'}
+              {languages.find(l => l.code === selectedLang)?.name || 'English'}
             </Text>
-            <Ionicons name={showLangPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#999" />
+            <Ionicons name={showLangPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#80CBC4" />
           </TouchableOpacity>
           {showLangPicker && (
             <View style={[styles.langList, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -643,13 +592,13 @@ export default function TranslateScreen() {
                   onPress={() => { setSelectedLang(lang.code); setShowLangPicker(false); }}
                 >
                   <Text style={[styles.langItemText, { color: colors.text }]}>{lang.name}</Text>
-                  {selectedLang === lang.code && <Ionicons name="checkmark-circle" size={18} color="#534AB7" />}
+                  {selectedLang === lang.code && <Ionicons name="checkmark-circle" size={18} color="#008080" />}
                 </TouchableOpacity>
               ))}
             </View>
           )}
           <TouchableOpacity
-            style={[styles.bigMicButton, { backgroundColor: isRecording ? '#E24B4A' : '#534AB7' }]}
+            style={[styles.bigMicButton, { backgroundColor: isRecording ? '#006666' : '#008080' }]}
             onPress={isRecording ? handleStopRecording : handleStartRecording}
             disabled={loading}
           >
@@ -678,12 +627,14 @@ export default function TranslateScreen() {
         </View>
       )}
 
-      {/* ── VIDEOS TAB ── */}
+      {/* VIDEOS TAB */}
       {activeTab === 'videos' && (
         <View style={styles.videosSection}>
           <View style={styles.videosHeader}>
             <View>
-              <Text style={[styles.videosSectionTitle, { color: colors.text }]}>Sign Language Videos 📺</Text>
+              <Text style={[styles.videosSectionTitle, { color: colors.text }]}>
+                Sign Language Videos
+              </Text>
               <Text style={[styles.videosSectionSubtitle, { color: colors.subtitle }]}>
                 Only showing videos available in your region
               </Text>
@@ -694,24 +645,19 @@ export default function TranslateScreen() {
               disabled={refreshingVideos || loadingVideos}
             >
               {refreshingVideos || loadingVideos ? (
-                <ActivityIndicator size="small" color="#534AB7" />
+                <ActivityIndicator size="small" color="#008080" />
               ) : (
-                <Ionicons name="refresh-outline" size={22} color="#534AB7" />
+                <Ionicons name="refresh-outline" size={22} color="#008080" />
               )}
             </TouchableOpacity>
           </View>
 
           {loadingVideos && (
             <View style={styles.centered}>
-              <ActivityIndicator size="large" color="#534AB7" />
-              <Text style={[styles.loadingText, { color: colors.subtitle }]}>Checking available videos...</Text>
-            </View>
-          )}
-
-          {refreshingVideos && !loadingVideos && (
-            <View style={styles.centered}>
-              <ActivityIndicator size="large" color="#534AB7" />
-              <Text style={[styles.loadingText, { color: colors.subtitle }]}>Loading new videos...</Text>
+              <ActivityIndicator size="large" color="#008080" />
+              <Text style={[styles.loadingText, { color: colors.subtitle }]}>
+                Checking available videos...
+              </Text>
             </View>
           )}
 
@@ -719,7 +665,7 @@ export default function TranslateScreen() {
             <TouchableOpacity
               key={video.id}
               style={[styles.videoCard, { backgroundColor: colors.card }]}
-              onPress={() => handleOpenVideo(video.url)}
+              onPress={() => WebBrowser.openBrowserAsync(video.url)}
             >
               <View style={styles.thumbnailContainer}>
                 <Image source={{ uri: video.thumbnail }} style={styles.thumbnail} resizeMode="cover" />
@@ -744,20 +690,13 @@ export default function TranslateScreen() {
 
           {!loadingVideos && !refreshingVideos && videos.length === 0 && (
             <View style={styles.centered}>
-              <Ionicons name="videocam-off-outline" size={48} color="#ccc" />
-              <Text style={[styles.emptyText, { color: colors.subtitle }]}>No videos available in your region</Text>
+              <Ionicons name="videocam-off-outline" size={48} color="#B2DFDB" />
+              <Text style={[styles.emptyText, { color: colors.subtitle }]}>
+                No videos available in your region
+              </Text>
               <TouchableOpacity style={styles.retryButton} onPress={handleRefreshVideos}>
                 <Text style={styles.retryText}>Try Again</Text>
               </TouchableOpacity>
-            </View>
-          )}
-
-          {!loadingVideos && !refreshingVideos && videos.length > 0 && (
-            <View style={[styles.noteBox, { backgroundColor: colors.card }]}>
-              <Ionicons name="information-circle-outline" size={18} color="#534AB7" />
-              <Text style={[styles.noteText, { color: colors.subtitle }]}>
-                Tap refresh to load different videos. Only videos available in your region are shown.
-              </Text>
             </View>
           )}
         </View>
@@ -770,24 +709,23 @@ export default function TranslateScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingTop: 60, paddingBottom: 30, paddingHorizontal: 24,
   },
   headerTitle: { fontSize: 28, fontWeight: '700', color: '#fff', marginBottom: 6 },
-  headerSubtitle: { fontSize: 14, color: '#d0ccff' },
+  headerSubtitle: { fontSize: 14, color: '#B2EBF2' },
   tabRow: {
     flexDirection: 'row', margin: 16, borderRadius: 12, padding: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
-  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
-  activeTab: { backgroundColor: '#534AB7' },
-  tabIcon: { fontSize: 16 },
-  tabLabel: { fontSize: 10, color: '#999', marginTop: 2, fontWeight: '500' },
+  tab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10, gap: 4 },
+  activeTab: { backgroundColor: '#008080' },
+  tabLabel: { fontSize: 10, color: '#008080', fontWeight: '500' },
   activeTabLabel: { color: '#fff' },
   card: {
     margin: 16, borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, marginBottom: 32,
   },
   sectionLabel: { fontSize: 15, fontWeight: '600', marginBottom: 10 },
@@ -796,7 +734,10 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 10, padding: 12,
   },
   langButtonText: { flex: 1, fontSize: 14, fontWeight: '500' },
-  langList: { marginTop: 6, borderRadius: 10, borderWidth: 1, overflow: 'hidden', marginBottom: 8 },
+  langList: {
+    marginTop: 6, borderRadius: 10, borderWidth: 1,
+    overflow: 'hidden', marginBottom: 8,
+  },
   langItem: {
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', padding: 12, borderBottomWidth: 1,
@@ -820,19 +761,19 @@ const styles = StyleSheet.create({
   translateButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 6,
-    paddingVertical: 12, borderRadius: 10, backgroundColor: '#534AB7',
+    paddingVertical: 12, borderRadius: 10, backgroundColor: '#008080',
   },
   translateButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   resultBox: {
-    marginTop: 16, backgroundColor: '#f0fdf4', borderRadius: 12,
-    padding: 14, borderWidth: 1, borderColor: '#bbf7d0',
+    marginTop: 16, backgroundColor: '#E0F2F1', borderRadius: 12,
+    padding: 14, borderWidth: 1, borderColor: '#B2DFDB',
   },
-  resultLabel: { fontSize: 12, fontWeight: '700', color: '#166534', marginBottom: 8 },
-  resultText: { fontSize: 15, fontWeight: '500', marginBottom: 10, lineHeight: 22, color: '#1a1a1a' },
+  resultLabel: { fontSize: 12, fontWeight: '700', color: '#004D40', marginBottom: 8 },
+  resultText: { fontSize: 15, fontWeight: '500', marginBottom: 10, lineHeight: 22, color: '#004D40' },
   resultActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   speakResultButton: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#1D9E75', padding: 8, borderRadius: 8, alignSelf: 'flex-start',
+    backgroundColor: '#008080', padding: 8, borderRadius: 8, alignSelf: 'flex-start',
   },
   speakResultText: { color: '#fff', fontWeight: '600', fontSize: 12 },
   signModeRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
@@ -840,10 +781,10 @@ const styles = StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 6,
     paddingVertical: 10, borderRadius: 10,
-    borderWidth: 1, borderColor: '#534AB7',
+    borderWidth: 1, borderColor: '#008080',
   },
-  signModeActive: { backgroundColor: '#534AB7' },
-  signModeText: { fontSize: 12, fontWeight: '600', color: '#534AB7' },
+  signModeActive: { backgroundColor: '#008080' },
+  signModeText: { fontSize: 12, fontWeight: '600', color: '#008080' },
   signModeTextActive: { color: '#fff' },
   cameraButtonRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   cameraButton: {
@@ -852,7 +793,7 @@ const styles = StyleSheet.create({
   },
   cameraIconCircle: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#ede9ff',
+    backgroundColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center', marginBottom: 8,
   },
   cameraButtonTitle: { fontSize: 12, fontWeight: '700', marginBottom: 2, textAlign: 'center' },
@@ -867,8 +808,8 @@ const styles = StyleSheet.create({
     width: 100, height: 100, borderRadius: 50,
     justifyContent: 'center', alignItems: 'center',
     alignSelf: 'center', marginVertical: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
   },
   micLabel: { textAlign: 'center', fontSize: 14, marginBottom: 16 },
   signGuide: { borderRadius: 12, padding: 14, marginTop: 16 },
@@ -882,7 +823,7 @@ const styles = StyleSheet.create({
   signGuideWordLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   signGuideNumber: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     justifyContent: 'center', alignItems: 'center',
   },
   signGuideNumberText: { color: '#fff', fontSize: 12, fontWeight: '700' },
@@ -897,12 +838,12 @@ const styles = StyleSheet.create({
   videosSectionSubtitle: { fontSize: 12, lineHeight: 18 },
   refreshButton: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#ede9ff',
+    backgroundColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center',
   },
   videoCard: {
     borderRadius: 16, overflow: 'hidden', marginBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   thumbnailContainer: { position: 'relative', width: '100%', height: 180 },
@@ -910,7 +851,7 @@ const styles = StyleSheet.create({
   playOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,128,128,0.3)',
   },
   durationBadge: {
     position: 'absolute', bottom: 8, right: 8,
@@ -922,16 +863,11 @@ const styles = StyleSheet.create({
   videoTitle: { fontSize: 14, fontWeight: '700', marginBottom: 6, lineHeight: 20 },
   videoMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   videoChannel: { fontSize: 12 },
-  noteBox: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    gap: 10, borderRadius: 12, padding: 14, marginTop: 8,
-  },
-  noteText: { flex: 1, fontSize: 13, lineHeight: 20 },
   centered: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   loadingText: { fontSize: 14 },
   emptyText: { fontSize: 15, textAlign: 'center' },
   retryButton: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8,
   },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 14 },
