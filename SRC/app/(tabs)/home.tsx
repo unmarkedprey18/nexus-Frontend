@@ -211,8 +211,12 @@ export default function HomeScreen() {
               pathname: '/article-detail',
               params: {
                 title: item.title || item.headline,
-                summary: item.summary || item.description || item.content,
+                summary: item.summary || item.description || '',
+                content: item.content || item.body || item.summary || item.description || '',
                 category: item.category || 'Health',
+                source: item.source || '',
+                sourceUrl: item.sourceUrl || item.url || '',
+                datePosted: item.datePosted || item.publishedAt || '',
                 id: item.entryId || item.id || item._id,
               },
             })}
