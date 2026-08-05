@@ -31,12 +31,10 @@ export default function AdminUsersScreen() {
     }
   };
 
-  // Get the correct user ID — username field contains the UUID
   const getUserId = (user: any) => {
     return user.username || user.userId || user.id || user.uuid;
   };
 
-  // Enable or disable a user account
   const handleToggleUser = async (user: any) => {
     const action = user.active ? 'disable' : 'enable';
     const userId = getUserId(user);
@@ -50,17 +48,9 @@ export default function AdminUsersScreen() {
           style: action === 'disable' ? 'destructive' : 'default',
           onPress: async () => {
             try {
-              // Backend expects "enabled" field
-              await api.put(`/admin/users/${userId}/status`, {
-                enabled: !user.active,
-              });
-              // Update local state immediately
-              setUsers(users.map(u =>
-                getUserId(u) === userId
-                  ? { ...u, active: !u.active }
-                  : u
-              ));
-              Alert.alert('✅ Success', `User ${action}d successfully!`);
+              await api.put(`/admin/users/${userId}/status`, { enabled: !user.active });
+              setUsers(users.map(u => getUserId(u) === userId ? { ...u, active: !u.active } : u));
+              Alert.alert('Success', `User ${action}d successfully!`);
             } catch (err: any) {
               Alert.alert('Failed', err.response?.data?.error || err.response?.data?.message || `Could not ${action} user`);
             }
@@ -70,11 +60,10 @@ export default function AdminUsersScreen() {
     );
   };
 
-  // Delete a user account
   const handleDeleteUser = async (user: any) => {
     const userId = getUserId(user);
     Alert.alert(
-      '⚠️ Delete User',
+      'Delete User',
       `Are you sure you want to permanently delete ${user.fullName || user.firstName || user.email}? This cannot be undone!`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -85,7 +74,7 @@ export default function AdminUsersScreen() {
             try {
               await api.delete(`/admin/users/${userId}`);
               setUsers(users.filter(u => getUserId(u) !== userId));
-              Alert.alert('✅ Success', 'User deleted successfully!');
+              Alert.alert('Success', 'User deleted successfully!');
             } catch (err: any) {
               Alert.alert('Failed', err.response?.data?.error || err.response?.data?.message || 'Could not delete user');
             }
@@ -95,7 +84,6 @@ export default function AdminUsersScreen() {
     );
   };
 
-  // Update user role
   const handleUpdateRole = async (user: any) => {
     const userId = getUserId(user);
     const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
@@ -109,12 +97,8 @@ export default function AdminUsersScreen() {
           onPress: async () => {
             try {
               await api.put(`/admin/users/${userId}/role`, { role: newRole });
-              setUsers(users.map(u =>
-                getUserId(u) === userId
-                  ? { ...u, role: newRole }
-                  : u
-              ));
-              Alert.alert('✅ Success', `User role updated to ${newRole}!`);
+              setUsers(users.map(u => getUserId(u) === userId ? { ...u, role: newRole } : u));
+              Alert.alert('Success', `User role updated to ${newRole}!`);
             } catch (err: any) {
               Alert.alert('Failed', err.response?.data?.error || 'Could not update role');
             }
@@ -126,7 +110,6 @@ export default function AdminUsersScreen() {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -146,7 +129,7 @@ export default function AdminUsersScreen() {
           <Text style={[styles.statLabel, { color: colors.subtitle }]}>Total</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.statNumber, { color: '#1D9E75' }]}>
+          <Text style={[styles.statNumber, { color: '#008080' }]}>
             {loading ? '--' : users.filter(u => u.active !== false).length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.subtitle }]}>Active</Text>
@@ -158,22 +141,20 @@ export default function AdminUsersScreen() {
           <Text style={[styles.statLabel, { color: colors.subtitle }]}>Disabled</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.statNumber, { color: '#534AB7' }]}>
+          <Text style={[styles.statNumber, { color: '#006666' }]}>
             {loading ? '--' : users.filter(u => u.role === 'ADMIN').length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.subtitle }]}>Admins</Text>
         </View>
       </View>
 
-      {/* Loading */}
       {loading && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#534AB7" />
+          <ActivityIndicator size="large" color="#008080" />
           <Text style={[styles.loadingText, { color: colors.subtitle }]}>Loading users...</Text>
         </View>
       )}
 
-      {/* Error */}
       {error !== '' && !loading && (
         <View style={styles.errorBox}>
           <Ionicons name="alert-circle-outline" size={22} color="#E24B4A" />
@@ -181,7 +162,6 @@ export default function AdminUsersScreen() {
         </View>
       )}
 
-      {/* User list */}
       {!loading && users.length > 0 && (
         <>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -199,9 +179,8 @@ export default function AdminUsersScreen() {
                   }
                 ]}
               >
-                {/* Avatar */}
                 <View style={[styles.avatar, {
-                  backgroundColor: user.role === 'ADMIN' ? '#534AB7' : '#1D9E75'
+                  backgroundColor: user.role === 'ADMIN' ? '#006666' : '#008080'
                 }]}>
                   <Text style={styles.avatarText}>
                     {user.fullName ? user.fullName[0].toUpperCase()
@@ -209,8 +188,6 @@ export default function AdminUsersScreen() {
                       : '?'}
                   </Text>
                 </View>
-
-                {/* User info */}
                 <View style={styles.userInfo}>
                   <Text style={[styles.userName, { color: colors.text }]}>
                     {user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown'}
@@ -219,45 +196,38 @@ export default function AdminUsersScreen() {
                     {user.email}
                   </Text>
                   <View style={styles.badgeRow}>
-                    {/* Role badge - tap to change role */}
                     <TouchableOpacity
                       onPress={() => handleUpdateRole(user)}
                       style={[styles.roleBadge, {
-                        backgroundColor: user.role === 'ADMIN' ? '#534AB7' : '#1D9E75'
+                        backgroundColor: user.role === 'ADMIN' ? '#006666' : '#008080'
                       }]}
                     >
                       <Text style={styles.badgeText}>{user.role || 'USER'}</Text>
                     </TouchableOpacity>
-                    {/* Status badge */}
                     <View style={[styles.statusBadge, {
-                      backgroundColor: user.active === false ? '#FEE2E2' : '#d1fae5'
+                      backgroundColor: user.active === false ? '#FEE2E2' : '#E0F2F1'
                     }]}>
                       <Text style={[styles.statusText, {
-                        color: user.active === false ? '#E24B4A' : '#065f46'
+                        color: user.active === false ? '#E24B4A' : '#004D40'
                       }]}>
                         {user.active === false ? 'Disabled' : 'Active'}
                       </Text>
                     </View>
                   </View>
                 </View>
-
-                {/* Action buttons */}
                 <View style={styles.actionButtons}>
-                  {/* Enable/Disable button */}
                   <TouchableOpacity
                     style={[styles.actionButton, {
-                      backgroundColor: user.active === false ? '#d1fae5' : '#FEE2E2'
+                      backgroundColor: user.active === false ? '#E0F2F1' : '#FEE2E2'
                     }]}
                     onPress={() => handleToggleUser(user)}
                   >
                     <Ionicons
                       name={user.active === false ? 'checkmark-outline' : 'ban-outline'}
                       size={16}
-                      color={user.active === false ? '#065f46' : '#E24B4A'}
+                      color={user.active === false ? '#004D40' : '#E24B4A'}
                     />
                   </TouchableOpacity>
-
-                  {/* Delete button */}
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: '#FEE2E2' }]}
                     onPress={() => handleDeleteUser(user)}
@@ -271,14 +241,12 @@ export default function AdminUsersScreen() {
         </>
       )}
 
-      {/* Empty state */}
       {!loading && users.length === 0 && error === '' && (
         <View style={styles.centered}>
-          <Ionicons name="people-outline" size={48} color="#ccc" />
+          <Ionicons name="people-outline" size={48} color="#B2DFDB" />
           <Text style={[styles.emptyText, { color: colors.subtitle }]}>No users found</Text>
         </View>
       )}
-
     </ScrollView>
   );
 }
@@ -286,7 +254,7 @@ export default function AdminUsersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingTop: 60, paddingBottom: 20, paddingHorizontal: 24,
     flexDirection: 'row', alignItems: 'center', gap: 16,
   },
@@ -296,7 +264,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, padding: 16 },
   statCard: {
     flex: 1, borderRadius: 12, padding: 12, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   statNumber: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
@@ -307,7 +275,7 @@ const styles = StyleSheet.create({
   },
   card: {
     marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, marginBottom: 32,
   },
   userRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
