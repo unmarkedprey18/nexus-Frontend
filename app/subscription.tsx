@@ -1,47 +1,20 @@
 import { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Alert, ActivityIndicator, Linking,
+  TouchableOpacity, Alert, ActivityIndicator, TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../store/useTheme';
 import { useAuthStore } from '../store/authStore';
+import * as WebBrowser from 'expo-web-browser';
 import api from '../services/api';
 
 const plans = [
-  {
-    id: 'monthly',
-    name: '1 Month',
-    price: 40,
-    duration: '1 month',
-    popular: false,
-    saving: null,
-  },
-  {
-    id: 'bimonthly',
-    name: '2 Months',
-    price: 80,
-    duration: '2 months',
-    popular: true,
-    saving: null,
-  },
-  {
-    id: 'biannual',
-    name: '6 Months',
-    price: 240,
-    duration: '6 months',
-    popular: false,
-    saving: 'Save GH₵ 0',
-  },
-  {
-    id: 'annual',
-    name: '1 Year',
-    price: 480,
-    duration: '12 months',
-    popular: false,
-    saving: 'Best Value!',
-  },
+  { id: 'monthly', name: '1 Month', price: 40, duration: '1 month', popular: false, saving: null },
+  { id: 'bimonthly', name: '2 Months', price: 80, duration: '2 months', popular: true, saving: null },
+  { id: 'biannual', name: '6 Months', price: 240, duration: '6 months', popular: false, saving: null },
+  { id: 'annual', name: '1 Year', price: 480, duration: '12 months', popular: false, saving: 'Best Value!' },
 ];
 
 const premiumFeatures = [
@@ -53,60 +26,92 @@ const premiumFeatures = [
   { icon: 'star-outline', title: 'Priority Support', desc: 'Get help faster as a premium member' },
 ];
 
-const mobileMoneyOptions = [
-  { id: 'mtn', name: 'MTN Mobile Money', color: '#FFC107', icon: '📱' },
-  { id: 'vodafone', name: 'Vodafone Cash', color: '#E53935', icon: '📱' },
-  { id: 'airteltigo', name: 'AirtelTigo Money', color: '#1565C0', icon: '📱' },
-];
+const MOMO_NUMBER = '0536764978';
+const MOMO_NAME = 'Patience Bentil';
+const SUPPORT_WHATSAPP = '0536764978';
 
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const user = useAuthStore((state: any) => state.user);
   const [selectedPlan, setSelectedPlan] = useState('monthly');
-  const [selectedNetwork, setSelectedNetwork] = useState('mtn');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'plans' | 'payment' | 'success'>('plans');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [useManual, setUseManual] = useState(false);
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
+  const reference = `NEXUS-${user?.email?.split('@')[0]?.toUpperCase()}-${Date.now()}`;
 
-  const handleSubscribe = async () => {
+  const handlePayWithPaystack = async () => {
     if (!phoneNumber.trim()) {
-      Alert.alert('Oops', 'Please enter your mobile money number');
+      Alert.alert('Oops', 'Please enter your mobile money number!');
       return;
     }
     if (phoneNumber.length < 10) {
-      Alert.alert('Oops', 'Please enter a valid 10-digit phone number');
+      Alert.alert('Oops', 'Please enter a valid 10 digit phone number!');
       return;
     }
     try {
       setLoading(true);
-      // Send subscription request to backend
-      await api.post('/subscription/initiate', {
+      const response = await api.post('/subscription/initiate', {
         plan: selectedPlan,
-        network: selectedNetwork,
-        phoneNumber,
+        subscriptionType: selectedPlan.toUpperCase(),
         amount: selectedPlanData?.price,
+        email: user?.email,
+        currency: 'GHS',
+        phoneNumber: phoneNumber.trim(),
       });
-      setStep('success');
-    } catch (err: any) {
-      // Show payment instructions if backend not ready
-      Alert.alert(
-        '📱 Complete Payment',
-        `Please send GH₵${selectedPlanData?.price} to our Mobile Money number:\n\n` +
-        `MTN: 0XX XXX XXXX\n` +
-        `Vodafone: 0XX XXX XXXX\n` +
-        `AirtelTigo: 0XX XXX XXXX\n\n` +
-        `Reference: NEXUS-${user?.email?.split('@')[0]?.toUpperCase()}\n\n` +
-        `After payment, send your receipt to support and we will activate your subscription within 24 hours.`,
-        [
-          { text: 'OK', onPress: () => setStep('success') },
-        ]
-      );
-    } finally {
+      const authorizationUrl =
+        response.data?.data?.authorizationUrl ||
+        response.data?.authorizationUrl ||
+        response.data?.data?.authorization_url ||
+        response.data?.authorization_url || '';
       setLoading(false);
+      if (authorizationUrl && authorizationUrl.startsWith('https://checkout.paystack.com')) {
+        await WebBrowser.openBrowserAsync(authorizationUrl);
+        Alert.alert(
+          'Payment Status',
+          'Did you complete the payment?',
+          [
+            { text: 'Yes I paid!', onPress: () => setStep('success') },
+            { text: 'No cancel', style: 'cancel' },
+          ]
+        );
+      } else {
+        setUseManual(true);
+        setStep('payment');
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setUseManual(true);
+      setStep('payment');
     }
+  };
+
+  const handleConfirmPayment = () => {
+    Alert.alert(
+      'Confirm Payment',
+      `Have you sent GH${selectedPlanData?.price} to ${MOMO_NAME} on MTN MoMo?\n\nReference: ${reference}`,
+      [
+        { text: 'Yes I have paid!', onPress: () => setStep('success') },
+        { text: 'Not yet', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleContactSupport = async () => {
+    const message =
+      `Hello Nexus Support,\n\n` +
+      `I have made a payment for the ${selectedPlanData?.name} subscription plan.\n\n` +
+      `Amount: GH${selectedPlanData?.price}\n` +
+      `Network: MTN Mobile Money\n` +
+      `Paid to: ${MOMO_NAME} (${MOMO_NUMBER})\n` +
+      `Reference: ${reference}\n` +
+      `Email: ${user?.email}\n\n` +
+      `Please activate my premium account. Thank you!`;
+    const whatsappUrl = `https://wa.me/233${SUPPORT_WHATSAPP.substring(1)}?text=${encodeURIComponent(message)}`;
+    await WebBrowser.openBrowserAsync(whatsappUrl);
   };
 
   // Success screen
@@ -115,27 +120,47 @@ export default function SubscriptionScreen() {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.successContainer}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={80} color="#1D9E75" />
+            <Ionicons name="checkmark-circle" size={80} color="#008080" />
           </View>
-          <Text style={[styles.successTitle, { color: colors.text }]}>Payment Initiated! 🎉</Text>
+          <Text style={[styles.successTitle, { color: colors.text }]}>
+            Payment Submitted!
+          </Text>
           <Text style={[styles.successSubtitle, { color: colors.subtitle }]}>
-            Your payment request has been sent. Once confirmed your Nexus Premium account will be activated within 24 hours!
+            Your Nexus Premium account will be activated within 24 hours after payment verification!
           </Text>
           <View style={[styles.successCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.successCardTitle, { color: colors.text }]}>What happens next?</Text>
+            <Text style={[styles.successCardTitle, { color: colors.text }]}>
+              What happens next?
+            </Text>
             <View style={styles.successStep}>
-              <View style={styles.successStepNumber}><Text style={styles.successStepNumberText}>1</Text></View>
-              <Text style={[styles.successStepText, { color: colors.subtitle }]}>Complete payment on your mobile money app</Text>
+              <View style={styles.successStepNumber}>
+                <Text style={styles.successStepNumberText}>1</Text>
+              </View>
+              <Text style={[styles.successStepText, { color: colors.subtitle }]}>
+                Send your payment screenshot to our support team on WhatsApp
+              </Text>
             </View>
             <View style={styles.successStep}>
-              <View style={styles.successStepNumber}><Text style={styles.successStepNumberText}>2</Text></View>
-              <Text style={[styles.successStepText, { color: colors.subtitle }]}>Send your receipt to our support team</Text>
+              <View style={styles.successStepNumber}>
+                <Text style={styles.successStepNumberText}>2</Text>
+              </View>
+              <Text style={[styles.successStepText, { color: colors.subtitle }]}>
+                We will verify your payment within 24 hours
+              </Text>
             </View>
             <View style={styles.successStep}>
-              <View style={styles.successStepNumber}><Text style={styles.successStepNumberText}>3</Text></View>
-              <Text style={[styles.successStepText, { color: colors.subtitle }]}>Your premium access will be activated within 24 hours</Text>
+              <View style={styles.successStepNumber}>
+                <Text style={styles.successStepNumberText}>3</Text>
+              </View>
+              <Text style={[styles.successStepText, { color: colors.subtitle }]}>
+                Your premium features will be unlocked automatically
+              </Text>
             </View>
           </View>
+          <TouchableOpacity style={styles.whatsappButton} onPress={handleContactSupport}>
+            <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+            <Text style={styles.whatsappButtonText}>Send Receipt on WhatsApp</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.doneButton} onPress={() => router.back()}>
             <Text style={styles.doneButtonText}>Back to App</Text>
           </TouchableOpacity>
@@ -144,8 +169,8 @@ export default function SubscriptionScreen() {
     );
   }
 
-  // Payment screen
-  if (step === 'payment') {
+  // Manual payment screen
+  if (step === 'payment' && useManual) {
     return (
       <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
@@ -155,8 +180,7 @@ export default function SubscriptionScreen() {
           <Text style={styles.headerTitle}>Complete Payment</Text>
         </View>
 
-        {/* Order summary */}
-        <View style={[styles.orderSummary, { backgroundColor: colors.card }]}>
+        <View style={[styles.orderCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.orderTitle, { color: colors.text }]}>Order Summary</Text>
           <View style={styles.orderRow}>
             <Text style={[styles.orderLabel, { color: colors.subtitle }]}>Plan</Text>
@@ -166,73 +190,75 @@ export default function SubscriptionScreen() {
             <Text style={[styles.orderLabel, { color: colors.subtitle }]}>Duration</Text>
             <Text style={[styles.orderValue, { color: colors.text }]}>{selectedPlanData?.duration}</Text>
           </View>
-          <View style={[styles.orderRow, styles.orderTotal]}>
+          <View style={[styles.orderRow, styles.orderTotalRow]}>
             <Text style={styles.orderTotalLabel}>Total</Text>
-            <Text style={styles.orderTotalValue}>GH₵ {selectedPlanData?.price}</Text>
+            <Text style={styles.orderTotalValue}>GH {selectedPlanData?.price}</Text>
           </View>
         </View>
 
-        {/* Select network */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Network</Text>
-        <View style={styles.networkRow}>
-          {mobileMoneyOptions.map((network) => (
-            <TouchableOpacity
-              key={network.id}
-              style={[
-                styles.networkButton,
-                { backgroundColor: colors.card, borderColor: colors.border },
-                selectedNetwork === network.id && { borderColor: network.color, borderWidth: 2 },
-              ]}
-              onPress={() => setSelectedNetwork(network.id)}
-            >
-              <Text style={styles.networkIcon}>{network.icon}</Text>
-              <Text style={[styles.networkName, { color: colors.text }]}>{network.name}</Text>
-              {selectedNetwork === network.id && (
-                <Ionicons name="checkmark-circle" size={18} color={network.color} />
-              )}
-            </TouchableOpacity>
-          ))}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Payment Instructions</Text>
+        <View style={[styles.instructionsCard, { backgroundColor: colors.card }]}>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>1</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              Open your <Text style={{ fontWeight: '700' }}>MTN Mobile Money</Text> app
+            </Text>
+          </View>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>2</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              Send <Text style={{ fontWeight: '700', color: '#008080' }}>
+                GH {selectedPlanData?.price}
+              </Text> to this number:
+            </Text>
+          </View>
+          <View style={[styles.momoBox, { backgroundColor: colors.background }]}>
+            <View style={styles.momoNetworkBadge}>
+              <Text style={styles.momoNetworkText}>MTN MoMo</Text>
+            </View>
+            <Text style={styles.momoNumber}>{MOMO_NUMBER}</Text>
+            <Text style={styles.momoName}>{MOMO_NAME}</Text>
+          </View>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>3</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              Use this as your payment reference:
+            </Text>
+          </View>
+          <View style={[styles.referenceBox, { backgroundColor: colors.background }]}>
+            <Text style={styles.referenceLabel}>Payment Reference:</Text>
+            <Text style={styles.referenceNumber}>{reference}</Text>
+          </View>
+          <View style={styles.instructionStep}>
+            <View style={styles.instructionNumber}>
+              <Text style={styles.instructionNumberText}>4</Text>
+            </View>
+            <Text style={[styles.instructionText, { color: colors.text }]}>
+              After payment tap <Text style={{ fontWeight: '700' }}>"I Have Paid"</Text> and send your screenshot to us on WhatsApp
+            </Text>
+          </View>
         </View>
 
-        {/* Phone number */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Mobile Money Number</Text>
-        <View style={[styles.phoneInput, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Ionicons name="call-outline" size={20} color="#534AB7" />
-          <Text
-            style={[styles.phoneInputText, { color: phoneNumber ? colors.text : '#999' }]}
-            onPress={() => {
-              Alert.prompt(
-                'Enter Phone Number',
-                'Enter your mobile money number',
-                (text) => setPhoneNumber(text),
-                'plain-text',
-                phoneNumber,
-                'phone-pad'
-              );
-            }}
-          >
-            {phoneNumber || 'Enter your mobile money number'}
-          </Text>
-        </View>
-
-        {/* Pay button */}
-        <TouchableOpacity
-          style={styles.payButton}
-          onPress={handleSubscribe}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="lock-closed-outline" size={20} color="#fff" />
-              <Text style={styles.payButtonText}>Pay GH₵ {selectedPlanData?.price}</Text>
-            </>
-          )}
+        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPayment}>
+          <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+          <Text style={styles.confirmButtonText}>I Have Paid!</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.secureNote, { color: colors.subtitle }]}>
-          🔒 Your payment is secure and encrypted
+        <TouchableOpacity style={styles.supportButton} onPress={handleContactSupport}>
+          <Ionicons name="logo-whatsapp" size={20} color="#008080" />
+          <Text style={[styles.supportButtonText, { color: '#008080' }]}>
+            Contact Support on WhatsApp
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.termsNote, { color: colors.subtitle }]}>
+          Premium will be activated within 24 hours after payment verification.
         </Text>
       </ScrollView>
     );
@@ -240,9 +266,10 @@ export default function SubscriptionScreen() {
 
   // Plans screen
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-
-      {/* Header */}
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -250,10 +277,10 @@ export default function SubscriptionScreen() {
         <Text style={styles.headerTitle}>Nexus Premium</Text>
       </View>
 
-      {/* Premium hero */}
+      {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.crownContainer}>
-          <Ionicons name="star" size={48} color="#FFC107" />
+          <Ionicons name="star" size={48} color="#B2EBF2" />
         </View>
         <Text style={styles.heroTitle}>Upgrade to Premium</Text>
         <Text style={styles.heroSubtitle}>
@@ -265,17 +292,17 @@ export default function SubscriptionScreen() {
       <View style={[styles.comparisonCard, { backgroundColor: colors.card }]}>
         <View style={styles.comparisonHeader}>
           <Text style={[styles.comparisonTitle, { color: colors.text }]}>Free</Text>
-          <Text style={styles.comparisonTitlePremium}>Premium ⭐</Text>
+          <Text style={styles.comparisonTitlePremium}>Premium</Text>
         </View>
         <View style={[styles.comparisonRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.comparisonFeature, { color: colors.text }]}>Live Camera</Text>
           <Ionicons name="close-circle" size={20} color="#E24B4A" />
-          <Ionicons name="checkmark-circle" size={20} color="#1D9E75" />
+          <Ionicons name="checkmark-circle" size={20} color="#008080" />
         </View>
         <View style={[styles.comparisonRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.comparisonFeature, { color: colors.text }]}>Offline Videos</Text>
           <Ionicons name="close-circle" size={20} color="#E24B4A" />
-          <Ionicons name="checkmark-circle" size={20} color="#1D9E75" />
+          <Ionicons name="checkmark-circle" size={20} color="#008080" />
         </View>
         <View style={[styles.comparisonRow, { borderBottomColor: colors.border }]}>
           <Text style={[styles.comparisonFeature, { color: colors.text }]}>Sign Language (daily)</Text>
@@ -300,7 +327,7 @@ export default function SubscriptionScreen() {
         {premiumFeatures.map((feature, index) => (
           <View key={index} style={[styles.featureCard, { backgroundColor: colors.card }]}>
             <View style={styles.featureIconCircle}>
-              <Ionicons name={feature.icon as any} size={24} color="#534AB7" />
+              <Ionicons name={feature.icon as any} size={24} color="#008080" />
             </View>
             <Text style={[styles.featureTitle, { color: colors.text }]}>{feature.title}</Text>
             <Text style={[styles.featureDesc, { color: colors.subtitle }]}>{feature.desc}</Text>
@@ -308,7 +335,7 @@ export default function SubscriptionScreen() {
         ))}
       </View>
 
-      {/* Subscription plans */}
+      {/* Plans */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Choose Your Plan</Text>
       <View style={styles.plansContainer}>
         {plans.map((plan) => (
@@ -341,27 +368,76 @@ export default function SubscriptionScreen() {
               </View>
             </View>
             <Text style={[styles.planPrice, selectedPlan === plan.id && styles.planPriceActive]}>
-              GH₵ {plan.price}
+              GH {plan.price}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
+      {/* Phone number input */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Mobile Money Number</Text>
+      <View style={[styles.phoneContainer, { backgroundColor: colors.card }]}>
+        <Ionicons name="call-outline" size={20} color="#008080" />
+        <TextInput
+          style={[styles.phoneInput, { color: colors.text }]}
+          placeholder="Enter your mobile money number"
+          placeholderTextColor="#80CBC4"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          keyboardType="phone-pad"
+          maxLength={10}
+        />
+      </View>
+      <Text style={[styles.phoneHint, { color: colors.subtitle }]}>
+        Enter the number linked to your MTN, Vodafone or AirtelTigo Mobile Money
+      </Text>
+
       {/* Subscribe button */}
       <TouchableOpacity
         style={styles.subscribeButton}
-        onPress={() => setStep('payment')}
+        onPress={handlePayWithPaystack}
+        disabled={loading}
       >
-        <Ionicons name="star-outline" size={20} color="#fff" />
-        <Text style={styles.subscribeButtonText}>
-          Subscribe for GH₵ {selectedPlanData?.price}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="lock-closed-outline" size={20} color="#fff" />
+            <Text style={styles.subscribeButtonText}>
+              Pay GH {selectedPlanData?.price} with Paystack
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
 
-      <Text style={[styles.termsNote, { color: colors.subtitle }]}>
-        By subscribing you agree to our Terms of Service. Subscriptions are activated after payment confirmation.
-      </Text>
+      {/* Payment methods */}
+      <View style={[styles.paymentMethods, { backgroundColor: colors.card }]}>
+        <Text style={[styles.paymentMethodsTitle, { color: colors.subtitle }]}>
+          Supported Payment Methods
+        </Text>
+        <View style={styles.paymentMethodsRow}>
+          <View style={styles.paymentMethod}>
+            <Ionicons name="phone-portrait-outline" size={24} color="#008080" />
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>MTN MoMo</Text>
+          </View>
+          <View style={styles.paymentMethod}>
+            <Ionicons name="phone-portrait-outline" size={24} color="#008080" />
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>Vodafone</Text>
+          </View>
+          <View style={styles.paymentMethod}>
+            <Ionicons name="phone-portrait-outline" size={24} color="#008080" />
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>AirtelTigo</Text>
+          </View>
+          <View style={styles.paymentMethod}>
+            <Ionicons name="card-outline" size={24} color="#008080" />
+            <Text style={[styles.paymentMethodName, { color: colors.text }]}>Card</Text>
+          </View>
+        </View>
+      </View>
 
+      <Text style={[styles.termsNote, { color: colors.subtitle }]}>
+        Payments are processed securely by Paystack. By subscribing you agree to our Terms of Service.
+      </Text>
     </ScrollView>
   );
 }
@@ -369,14 +445,14 @@ export default function SubscriptionScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingTop: 60, paddingBottom: 20, paddingHorizontal: 24,
     flexDirection: 'row', alignItems: 'center', gap: 16,
   },
   backButton: { padding: 4 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: '#fff' },
   hero: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingBottom: 32, paddingHorizontal: 24, alignItems: 'center',
   },
   crownContainer: {
@@ -385,41 +461,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
   heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 8, textAlign: 'center' },
-  heroSubtitle: { fontSize: 14, color: '#d0ccff', textAlign: 'center', lineHeight: 22 },
+  heroSubtitle: { fontSize: 14, color: '#B2EBF2', textAlign: 'center', lineHeight: 22 },
   comparisonCard: {
     marginHorizontal: 16, borderRadius: 16, overflow: 'hidden',
-    marginTop: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    marginTop: 20, shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   comparisonHeader: {
     flexDirection: 'row', padding: 14,
-    backgroundColor: '#534AB7', justifyContent: 'flex-end', gap: 32,
+    backgroundColor: '#006666', justifyContent: 'flex-end', gap: 32,
   },
-  comparisonTitle: { fontSize: 14, fontWeight: '700', color: '#d0ccff', flex: 1, marginLeft: 8 },
-  comparisonTitlePremium: { fontSize: 14, fontWeight: '700', color: '#FFC107' },
+  comparisonTitle: { fontSize: 14, fontWeight: '700', color: '#B2EBF2', flex: 1, marginLeft: 8 },
+  comparisonTitlePremium: { fontSize: 14, fontWeight: '700', color: '#fff' },
   comparisonRow: {
     flexDirection: 'row', alignItems: 'center',
     padding: 14, borderBottomWidth: 1, gap: 8,
   },
   comparisonFeature: { flex: 1, fontSize: 13, fontWeight: '500' },
   comparisonLimit: { fontSize: 12, fontWeight: '600' },
-  comparisonUnlimited: { fontSize: 12, fontWeight: '700', color: '#1D9E75' },
+  comparisonUnlimited: { fontSize: 12, fontWeight: '700', color: '#008080' },
   sectionTitle: {
     fontSize: 16, fontWeight: '700',
     marginHorizontal: 16, marginTop: 24, marginBottom: 12,
   },
-  featuresGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 16, gap: 12,
-  },
+  featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, gap: 12 },
   featureCard: {
     width: '47%', borderRadius: 16, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   featureIconCircle: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#ede9ff',
+    backgroundColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center', marginBottom: 10,
   },
   featureTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
@@ -430,101 +503,143 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     position: 'relative',
   },
-  selectedPlan: { borderColor: '#534AB7', borderWidth: 2 },
+  selectedPlan: { borderColor: '#008080', borderWidth: 2 },
   popularBadge: {
     position: 'absolute', top: -10, left: 16,
-    backgroundColor: '#534AB7', paddingHorizontal: 10,
+    backgroundColor: '#008080', paddingHorizontal: 10,
     paddingVertical: 3, borderRadius: 10,
   },
   popularBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   savingBadge: {
     position: 'absolute', top: -10, right: 16,
-    backgroundColor: '#1D9E75', paddingHorizontal: 10,
+    backgroundColor: '#006666', paddingHorizontal: 10,
     paddingVertical: 3, borderRadius: 10,
   },
   savingBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   planLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   planRadio: {
     width: 22, height: 22, borderRadius: 11,
-    borderWidth: 2, borderColor: '#ccc',
+    borderWidth: 2, borderColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center',
   },
-  planRadioActive: { borderColor: '#534AB7' },
-  planRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#534AB7' },
+  planRadioActive: { borderColor: '#008080' },
+  planRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#008080' },
   planName: { fontSize: 15, fontWeight: '700' },
   planDuration: { fontSize: 12, marginTop: 2 },
-  planPrice: { fontSize: 18, fontWeight: '800', color: '#999' },
-  planPriceActive: { color: '#534AB7' },
+  planPrice: { fontSize: 18, fontWeight: '800', color: '#B2DFDB' },
+  planPriceActive: { color: '#008080' },
+  phoneContainer: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginHorizontal: 16, borderRadius: 12, padding: 16,
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  phoneInput: { flex: 1, fontSize: 15 },
+  phoneHint: { fontSize: 12, marginHorizontal: 16, marginTop: 6, lineHeight: 18 },
   subscribeButton: {
-    backgroundColor: '#534AB7', flexDirection: 'row',
+    backgroundColor: '#008080', flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
     gap: 8, margin: 16, marginTop: 20, padding: 18, borderRadius: 14,
-    shadowColor: '#534AB7', shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   subscribeButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  termsNote: { fontSize: 12, textAlign: 'center', marginHorizontal: 24, marginBottom: 32, lineHeight: 18 },
-
-  // Payment screen styles
-  orderSummary: {
+  paymentMethods: {
+    marginHorizontal: 16, borderRadius: 16, padding: 16, marginTop: 8,
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  paymentMethodsTitle: { fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  paymentMethodsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  paymentMethod: { alignItems: 'center', gap: 4 },
+  paymentMethodName: { fontSize: 11, fontWeight: '600' },
+  termsNote: {
+    fontSize: 12, textAlign: 'center',
+    marginHorizontal: 24, marginBottom: 32, lineHeight: 18, marginTop: 12,
+  },
+  orderCard: {
     margin: 16, borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   orderTitle: { fontSize: 16, fontWeight: '700', marginBottom: 14 },
   orderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   orderLabel: { fontSize: 14 },
   orderValue: { fontSize: 14, fontWeight: '600' },
-  orderTotal: {
-    borderTopWidth: 1, borderTopColor: '#eee',
-    paddingTop: 10, marginTop: 4,
+  orderTotalRow: { borderTopWidth: 1, borderTopColor: '#B2DFDB', paddingTop: 10, marginTop: 4 },
+  orderTotalLabel: { fontSize: 16, fontWeight: '700', color: '#008080' },
+  orderTotalValue: { fontSize: 20, fontWeight: '800', color: '#008080' },
+  instructionsCard: {
+    marginHorizontal: 16, borderRadius: 16, padding: 16,
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, marginBottom: 8,
   },
-  orderTotalLabel: { fontSize: 16, fontWeight: '700', color: '#534AB7' },
-  orderTotalValue: { fontSize: 20, fontWeight: '800', color: '#534AB7' },
-  networkRow: { paddingHorizontal: 16, gap: 10 },
-  networkButton: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderRadius: 12, padding: 14, borderWidth: 1, marginBottom: 4,
+  instructionStep: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    gap: 12, marginBottom: 14,
   },
-  networkIcon: { fontSize: 20 },
-  networkName: { flex: 1, fontSize: 14, fontWeight: '600' },
-  phoneInput: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    marginHorizontal: 16, borderRadius: 12, padding: 16, borderWidth: 1,
+  instructionNumber: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#008080',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
-  phoneInputText: { flex: 1, fontSize: 15 },
-  payButton: {
-    backgroundColor: '#534AB7', flexDirection: 'row',
+  instructionNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  instructionText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  momoBox: { borderRadius: 12, padding: 16, marginBottom: 14, alignItems: 'center' },
+  momoNetworkBadge: {
+    backgroundColor: '#008080', paddingHorizontal: 12,
+    paddingVertical: 4, borderRadius: 20, marginBottom: 10,
+  },
+  momoNetworkText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  momoNumber: {
+    fontSize: 28, fontWeight: '800', color: '#008080',
+    letterSpacing: 2, marginBottom: 4,
+  },
+  momoName: { fontSize: 14, fontWeight: '600', color: '#006666' },
+  referenceBox: { borderRadius: 10, padding: 14, marginBottom: 14, alignItems: 'center' },
+  referenceLabel: { fontSize: 12, color: '#80CBC4', marginBottom: 6 },
+  referenceNumber: { fontSize: 13, fontWeight: '700', color: '#008080', letterSpacing: 1 },
+  confirmButton: {
+    backgroundColor: '#008080', flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
-    gap: 8, margin: 16, marginTop: 24, padding: 18, borderRadius: 14,
+    gap: 8, margin: 16, padding: 18, borderRadius: 14,
+    shadowColor: '#008080', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  payButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  secureNote: { fontSize: 12, textAlign: 'center', marginBottom: 32 },
-
-  // Success screen styles
+  confirmButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  supportButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, marginHorizontal: 16, padding: 14, borderRadius: 14,
+    borderWidth: 1, borderColor: '#008080', marginBottom: 8,
+  },
+  supportButtonText: { fontSize: 15, fontWeight: '600' },
   successContainer: {
     flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   successIcon: {
     width: 120, height: 120, borderRadius: 60,
-    backgroundColor: '#d1fae5',
+    backgroundColor: '#B2DFDB',
     justifyContent: 'center', alignItems: 'center', marginBottom: 24,
   },
   successTitle: { fontSize: 24, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
   successSubtitle: { fontSize: 15, textAlign: 'center', lineHeight: 24, marginBottom: 24 },
-  successCard: {
-    borderRadius: 16, padding: 20, width: '100%', marginBottom: 24,
-  },
+  successCard: { borderRadius: 16, padding: 20, width: '100%', marginBottom: 16 },
   successCardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
-  successStep: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  successStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
   successStepNumber: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#534AB7',
-    justifyContent: 'center', alignItems: 'center',
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#008080',
+    justifyContent: 'center', alignItems: 'center', flexShrink: 0,
   },
   successStepNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   successStepText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  whatsappButton: {
+    backgroundColor: '#25D366', flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 8, padding: 16, borderRadius: 12, width: '100%', marginBottom: 12,
+  },
+  whatsappButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   doneButton: {
-    backgroundColor: '#534AB7', padding: 16,
+    backgroundColor: '#008080', padding: 16,
     borderRadius: 12, width: '100%', alignItems: 'center',
   },
   doneButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },

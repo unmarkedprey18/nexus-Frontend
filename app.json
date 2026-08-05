@@ -14,7 +14,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#534AB7"
-      }
+      },
+      "package": "com.kobbyasmah.nexusmobile"
     },
     "web": {
       "output": "static",
@@ -26,6 +27,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "25730bb0-9a30-490e-9f85-d4e4dc11c134"
+      }
     }
   }
 }

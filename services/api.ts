@@ -1,20 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Alert } from 'react-native';
 
-// Real backend URL deployed on Render.com
 const BASE_URL = 'https://nexus-3rk7.onrender.com/api/v1';
 
-// Create our main axios instance with default settings
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 60000, // wait max 60 seconds — Render.com free tier needs time to wake up
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Before every request, grab the user's token and attach it
-// This way we don't have to manually add it on every screen
+// Before every request attach the token
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem('token');
   if (token) {
@@ -23,11 +21,40 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// If a request fails, log the error so we can see what went wrong
+// Handle errors cleanly — no more ugly logs!
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const status = error?.response?.status;
+    const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+    const isNetworkError = !error.response && !isTimeout;
+
+    // Backend sleeping or timeout
+    if (isTimeout) {
+      Alert.alert(
+        'Connection Timeout',
+        'The server is taking too long to respond. It may be waking up — please try again in a few seconds!',
+        [{ text: 'OK' }]
+      );
+      return Promise.reject(error);
+    }
+
+    // No internet connection
+    if (isNetworkError) {
+      Alert.alert(
+        'No Connection',
+        'Please check your internet connection and try again!',
+        [{ text: 'OK' }]
+      );
+      return Promise.reject(error);
+    }
+
+    // Don't show alerts for these — screens handle them themselves
+    if (status === 401 || status === 403 || status === 404) {
+      return Promise.reject(error);
+    }
+
+    // All other errors — reject silently without logging
     return Promise.reject(error);
   }
 );

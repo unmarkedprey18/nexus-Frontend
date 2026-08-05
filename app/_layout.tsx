@@ -1,43 +1,41 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { StatusBar, View } from 'react-native';
+import { Stack } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 
-// Create one QueryClient for the whole app
-const queryClient = new QueryClient();
-
-// This is a separate component so it can read the theme store
-// after the providers are set up
-function AppContent() {
+export default function RootLayout() {
   const loadAuth = useAuthStore((state: any) => state.loadAuth);
-  const { isDark, loadTheme } = useThemeStore();
+  const loadTheme = useThemeStore((state: any) => state.loadTheme);
 
-  // Load both auth and theme when app first opens
   useEffect(() => {
     loadAuth();
     loadTheme();
   }, []);
 
   return (
-    // This View wraps every single screen in the app
-    // so the background color changes everywhere at once
-    <View style={{ flex: 1, backgroundColor: isDark ? '#1a1a1a' : '#fff' }}>
-      {/* StatusBar changes color based on theme */}
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#1a1a1a' : '#fff'}
-      />
-      <Stack screenOptions={{ headerShown: false }} />
-    </View>
-  );
-}
-
-export default function RootLayout() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppContent />
-    </QueryClientProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="login" />
+      <Stack.Screen name="register" />
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="admin-dashboard" />
+      <Stack.Screen name="admin-users" />
+      <Stack.Screen name="admin-news" />
+      <Stack.Screen name="admin-videos" />
+      <Stack.Screen name="admin-logs" />
+      <Stack.Screen name="admin-stats" />
+      <Stack.Screen name="admin-health" />
+      <Stack.Screen name="admin-profile" />
+      <Stack.Screen name="edit-profile" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="privacy" />
+      <Stack.Screen name="language" />
+      <Stack.Screen name="help" />
+      <Stack.Screen name="about" />
+      <Stack.Screen name="subscription" />
+      <Stack.Screen name="article-detail" />
+      <Stack.Screen name="firstaid-detail" />
+    </Stack>
   );
 }

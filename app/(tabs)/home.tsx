@@ -1,12 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../store/useTheme';
+import { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
-// Health related categories — only show these
 const healthCategories = [
   'health', 'medical', 'fitness', 'wellness',
   'nutrition', 'mental health', 'healthcare',
@@ -16,23 +15,17 @@ const healthCategories = [
   'deaf', 'hearing', 'disability', 'sign language',
 ];
 
-// Check if a news item is health related
 const isHealthRelated = (item: any) => {
   const category = (item.category || '').toLowerCase();
   const title = (item.title || item.headline || '').toLowerCase();
   const summary = (item.summary || '').toLowerCase();
-
-  // Check category first
   if (healthCategories.some(c => category.includes(c))) return true;
-
-  // Check title and summary for health keywords
   const keywords = ['health', 'medical', 'fitness', 'wellness', 'doctor',
     'hospital', 'disease', 'treatment', 'medicine', 'patient',
     'deaf', 'hearing', 'disability', 'sign language', 'surgery',
     'vaccine', 'therapy', 'diet', 'exercise', 'nutrition', 'mental'];
   if (keywords.some(k => title.includes(k))) return true;
   if (keywords.some(k => summary.includes(k))) return true;
-
   return false;
 };
 
@@ -74,7 +67,6 @@ export default function HomeScreen() {
     fetchNews();
   };
 
-  // Force backend to fetch latest news then reload
   const handleForceRefresh = async () => {
     try {
       setRefreshing(true);
@@ -85,40 +77,45 @@ export default function HomeScreen() {
     }
   };
 
-  // Filter news based on selected category and health filter
   const getFilteredNews = () => {
     let filtered = news;
-
-    // Filter health only if toggle is on
     if (showHealthOnly) {
       filtered = filtered.filter(item => isHealthRelated(item));
     }
-
-    // Filter by selected category
     if (selectedCategory !== 'All') {
       filtered = filtered.filter(item =>
         (item.category || '').toLowerCase().includes(selectedCategory.toLowerCase())
       );
     }
-
     return filtered;
   };
 
   const filteredNews = getFilteredNews();
+
+  const getCategoryColor = (category: string) => {
+    const cat = (category || '').toLowerCase();
+    if (cat.includes('health')) return '#006666';
+    if (cat.includes('fitness')) return '#008080';
+    if (cat.includes('mental')) return '#00897B';
+    if (cat.includes('nutrition')) return '#00796B';
+    if (cat.includes('medical')) return '#004D40';
+    if (cat.includes('deaf') || cat.includes('hearing')) return '#00BCD4';
+    return '#008080';
+  };
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#534AB7']} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#008080']} />
       }
     >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>Hello, {user?.name || 'there'} 👋</Text>
+            <Text style={styles.greeting}>Hello, {user?.name || 'there'}</Text>
             <Text style={styles.subGreeting}>Your health news feed</Text>
           </View>
           <TouchableOpacity
@@ -134,7 +131,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Health only toggle */}
         <TouchableOpacity
           style={[styles.healthToggle, showHealthOnly && styles.healthToggleActive]}
           onPress={() => setShowHealthOnly(!showHealthOnly)}
@@ -142,10 +138,10 @@ export default function HomeScreen() {
           <Ionicons
             name={showHealthOnly ? 'medical' : 'medical-outline'}
             size={16}
-            color={showHealthOnly ? '#fff' : '#d0ccff'}
+            color="#fff"
           />
-          <Text style={[styles.healthToggleText, showHealthOnly && styles.healthToggleTextActive]}>
-            {showHealthOnly ? 'Health Only ✓' : 'Show All News'}
+          <Text style={styles.healthToggleText}>
+            {showHealthOnly ? 'Health Only' : 'Show All News'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -160,38 +156,44 @@ export default function HomeScreen() {
         {categories.map((cat) => (
           <TouchableOpacity
             key={cat}
-            style={[styles.categoryButton, selectedCategory === cat && styles.activeCategoryButton]}
+            style={[
+              styles.categoryButton,
+              { backgroundColor: colors.card },
+              selectedCategory === cat && styles.activeCategoryButton,
+            ]}
             onPress={() => setSelectedCategory(cat)}
           >
-            <Text style={[styles.categoryText, selectedCategory === cat && styles.activeCategoryText]}>
+            <Text style={[
+              styles.categoryText,
+              { color: colors.subtitle },
+              selectedCategory === cat && styles.activeCategoryText,
+            ]}>
               {cat}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* News feed section */}
+      {/* News feed */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {showHealthOnly ? '🏥 Health News' : '📰 Latest News'}
+            {showHealthOnly ? 'Health News' : 'Latest News'}
           </Text>
           <Text style={[styles.newsCount, { color: colors.subtitle }]}>
             {filteredNews.length} articles
           </Text>
         </View>
 
-        {/* Loading state */}
         {loading && (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#534AB7" />
+            <ActivityIndicator size="large" color="#008080" />
             <Text style={[styles.loadingText, { color: colors.subtitle }]}>
               Loading news...
             </Text>
           </View>
         )}
 
-        {/* Error state */}
         {error !== '' && !loading && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
@@ -201,43 +203,39 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* News cards */}
         {!loading && filteredNews.map((item: any, index: number) => (
           <TouchableOpacity
             key={item.entryId || item.id || item._id || index.toString()}
             style={[styles.card, { backgroundColor: colors.card }]}
-            onPress={() =>
-              router.push({
-                pathname: '/article-detail',
-                params: {
-                  title: item.title || item.headline,
-                  summary: item.summary || item.description || item.content,
-                  category: item.category || 'Health',
-                  id: item.entryId || item.id || item._id,
-                },
-              })
-            }
+            onPress={() => router.push({
+              pathname: '/article-detail',
+              params: {
+                title: item.title || item.headline,
+                summary: item.summary || item.description || '',
+                content: item.content || item.body || item.summary || item.description || '',
+                category: item.category || 'Health',
+                source: item.source || '',
+                sourceUrl: item.sourceUrl || item.url || '',
+                datePosted: item.datePosted || item.publishedAt || '',
+                id: item.entryId || item.id || item._id,
+              },
+            })}
           >
-            {/* Category badge */}
             <View style={[styles.badge, { backgroundColor: getCategoryColor(item.category) + '20' }]}>
               <Text style={[styles.badgeText, { color: getCategoryColor(item.category) }]}>
                 {item.category || 'Health'}
               </Text>
             </View>
-
-            {/* News title and summary */}
             <Text style={[styles.cardTitle, { color: colors.text }]}>
               {item.title || item.headline || 'No title'}
             </Text>
             <Text style={[styles.cardSummary, { color: colors.subtitle }]} numberOfLines={3}>
               {item.summary || item.description || item.content?.substring(0, 150) + '...'}
             </Text>
-
-            {/* Source and date */}
             <View style={styles.cardFooter}>
               {item.source && (
                 <Text style={[styles.source, { color: colors.subtitle }]}>
-                  📰 {item.source}
+                  {item.source}
                 </Text>
               )}
               {item.datePosted && (
@@ -251,20 +249,14 @@ export default function HomeScreen() {
           </TouchableOpacity>
         ))}
 
-        {/* Empty state */}
         {!loading && filteredNews.length === 0 && error === '' && (
           <View style={styles.centered}>
-            <Ionicons name="newspaper-outline" size={48} color="#ccc" />
+            <Ionicons name="newspaper-outline" size={48} color="#B2DFDB" />
             <Text style={[styles.emptyText, { color: colors.subtitle }]}>
-              {showHealthOnly
-                ? 'No health news available right now'
-                : 'No news articles yet 📰'}
+              {showHealthOnly ? 'No health news available right now' : 'No news articles yet'}
             </Text>
             {showHealthOnly && (
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => setShowHealthOnly(false)}
-              >
+              <TouchableOpacity style={styles.retryButton} onPress={() => setShowHealthOnly(false)}>
                 <Text style={styles.retryText}>Show All News</Text>
               </TouchableOpacity>
             )}
@@ -278,22 +270,10 @@ export default function HomeScreen() {
   );
 }
 
-// Get color for each category
-const getCategoryColor = (category: string) => {
-  const cat = (category || '').toLowerCase();
-  if (cat.includes('health')) return '#1D9E75';
-  if (cat.includes('fitness')) return '#534AB7';
-  if (cat.includes('mental')) return '#8B5CF6';
-  if (cat.includes('nutrition')) return '#F59E0B';
-  if (cat.includes('medical')) return '#E24B4A';
-  if (cat.includes('deaf') || cat.includes('hearing')) return '#06B6D4';
-  return '#534AB7';
-};
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    backgroundColor: '#534AB7',
+    backgroundColor: '#008080',
     paddingTop: 60,
     paddingBottom: 20,
     paddingHorizontal: 24,
@@ -305,66 +285,90 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   greeting: { fontSize: 24, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  subGreeting: { fontSize: 14, color: '#d0ccff' },
+  subGreeting: { fontSize: 14, color: '#B2EBF2' },
   refreshIcon: {
     padding: 10,
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 20,
   },
   healthToggle: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 20, alignSelf: 'flex-start',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   healthToggleActive: {
     backgroundColor: 'rgba(255,255,255,0.25)',
     borderColor: 'rgba(255,255,255,0.6)',
   },
-  healthToggleText: { fontSize: 13, color: '#d0ccff', fontWeight: '600' },
-  healthToggleTextActive: { color: '#fff' },
+  healthToggleText: { fontSize: 13, color: '#fff', fontWeight: '600' },
   categoryRow: { marginVertical: 12 },
   categoryButton: {
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  activeCategoryButton: { backgroundColor: '#534AB7' },
-  categoryText: { fontSize: 13, fontWeight: '600', color: '#666' },
+  activeCategoryButton: { backgroundColor: '#008080' },
+  categoryText: { fontSize: 13, fontWeight: '600' },
   activeCategoryText: { color: '#fff' },
   section: { padding: 16 },
   sectionHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: { fontSize: 18, fontWeight: '700' },
   newsCount: { fontSize: 13 },
   card: {
-    borderRadius: 12, padding: 16, marginBottom: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: '#008080',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   badge: {
-    alignSelf: 'flex-start', paddingHorizontal: 10,
-    paddingVertical: 4, borderRadius: 20, marginBottom: 10,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 10,
   },
   badgeText: { fontSize: 12, fontWeight: '600' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
   cardSummary: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   source: { fontSize: 12, fontStyle: 'italic' },
   date: { fontSize: 11 },
   centered: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   loadingText: { fontSize: 14 },
   emptyText: { fontSize: 15, textAlign: 'center' },
   errorBox: {
-    backgroundColor: '#FEE2E2', borderRadius: 10,
-    padding: 14, alignItems: 'center', gap: 10,
+    backgroundColor: '#E0F2F1',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    gap: 10,
   },
-  errorText: { fontSize: 13, color: '#991b1b', textAlign: 'center' },
+  errorText: { fontSize: 13, color: '#004D40', textAlign: 'center' },
   retryButton: {
-    backgroundColor: '#534AB7', paddingHorizontal: 20,
-    paddingVertical: 8, borderRadius: 8,
+    backgroundColor: '#008080',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   retryText: { color: '#fff', fontWeight: '600', fontSize: 13 },
-}); 
+});

@@ -1,36 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator, Alert,
-  ScrollView,
-  StyleSheet,
-  Text, TextInput, TouchableOpacity,
-  View,
+  View, Text, StyleSheet, TextInput,
+  TouchableOpacity, Alert, ActivityIndicator,
+  ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
-import { useTheme } from '../store/useTheme';
-
-// Auto-generates an index number from the user's email
-const generateIndexNumber = (email: string) => {
-  const emailPrefix = email.split('@')[0].substring(0, 6);
-  return emailPrefix.toUpperCase();
-};
-
-// Check password strength
-const checkPassword = (password: string) => {
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasLowercase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecial = /[@#$%^&+=!]/.test(password);
-  const hasLength = password.length >= 8;
-  return { hasUppercase, hasLowercase, hasNumber, hasSpecial, hasLength };
-};
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
-
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,259 +17,260 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [registered, setRegistered] = useState(false);
 
-  const passwordCheck = checkPassword(password);
-  const isPasswordValid = Object.values(passwordCheck).every(Boolean);
+  const getPasswordStrength = () => {
+    if (password.length === 0) return null;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[@#$%^&+=!]/.test(password);
+    const isLong = password.length >= 8;
+    const score = [hasUpper, hasLower, hasNumber, hasSpecial, isLong].filter(Boolean).length;
+    if (score <= 2) return { label: 'Weak', color: '#E24B4A' };
+    if (score <= 3) return { label: 'Fair', color: '#F59E0B' };
+    if (score <= 4) return { label: 'Good', color: '#008080' };
+    return { label: 'Strong', color: '#1D9E75' };
+  };
+
+  const getRegisterError = (err: any) => {
+    const status = err?.response?.status;
+    const message = err?.response?.data?.message || '';
+
+    if (status === 409) return 'This email is already registered. Please log in instead!';
+    if (status === 400) {
+      if (message.toLowerCase().includes('password')) return 'Your password is too weak. Use at least 8 characters with uppercase, number and special character!';
+      if (message.toLowerCase().includes('email')) return 'Please enter a valid email address!';
+      return 'Please check your details and try again!';
+    }
+    if (message.toLowerCase().includes('already exists')) return 'This email is already registered. Please log in instead!';
+    if (message.toLowerCase().includes('password')) return 'Your password is too weak. Add uppercase, number and special character!';
+    if (message.toLowerCase().includes('email')) return 'Please enter a valid email address!';
+    return 'Could not create account. Please try again!';
+  };
+
+  const strength = getPasswordStrength();
 
   const handleRegister = async () => {
-    if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert('Oops', 'Please fill in all fields');
+    if (!fullName.trim()) {
+      Alert.alert('Oops', 'Please enter your full name!');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      Alert.alert('Oops', 'Please enter a valid email address!');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Oops', 'Please enter a password!');
+      return;
+    }
+    if (password.length < 8) {
+      Alert.alert('Oops', 'Password must be at least 8 characters long!');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      Alert.alert('Oops', 'Password must have at least one uppercase letter!');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      Alert.alert('Oops', 'Password must have at least one number!');
+      return;
+    }
+    if (!/[@#$%^&+=!]/.test(password)) {
+      Alert.alert('Oops', 'Password must have at least one special character like @ # $ % !');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Oops', 'Passwords do not match');
-      return;
-    }
-    if (!isPasswordValid) {
-      Alert.alert('Weak Password', 'Password must have uppercase, lowercase, number and special character (@#$%^&+=!)');
+      Alert.alert('Oops', 'Passwords do not match. Please check and try again!');
       return;
     }
     try {
       setLoading(true);
-      const indexNumber = generateIndexNumber(email);
-      await api.post('/auth/register', {
-        fullName,
-        email,
-        password,
-        indexNumber,
-      });
-      setRegistered(true);
-    } catch (error: any) {
+      const indexNumber = email.split('@')[0];
+      await api.post('/auth/register', { fullName, email, password, indexNumber });
       Alert.alert(
-        'Registration failed',
-        error.response?.data?.message || error.response?.data?.error || 'Something went wrong'
+        'Account Created!',
+        'We sent a verification link to your email. Please check your inbox and click the link to activate your account!',
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
       );
+    } catch (err: any) {
+      Alert.alert('Registration Failed', getRegisterError(err));
     } finally {
       setLoading(false);
     }
   };
 
-  // Email verification screen
-  if (registered) {
-    return (
-      <View style={[styles.verifyContainer, { backgroundColor: colors.background }]}>
-        <View style={styles.verifyIcon}>
-          <Ionicons name="mail-outline" size={60} color="#534AB7" />
-        </View>
-        <Text style={[styles.verifyTitle, { color: colors.text }]}>Check Your Email! 📧</Text>
-        <Text style={[styles.verifySubtitle, { color: colors.subtitle }]}>
-          We sent a verification link to:
-        </Text>
-        <Text style={[styles.verifyEmail, { color: '#534AB7' }]}>{email}</Text>
-        <Text style={[styles.verifyInfo, { color: colors.subtitle }]}>
-          Click the link in the email to verify your account before logging in. The link expires in 24 hours.
-        </Text>
-        <View style={styles.verifySteps}>
-          <View style={styles.step}>
-            <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
-            <Text style={[styles.stepText, { color: colors.text }]}>Open your email inbox</Text>
-          </View>
-          <View style={styles.step}>
-            <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
-            <Text style={[styles.stepText, { color: colors.text }]}>Find the email from Nexus Team</Text>
-          </View>
-          <View style={styles.step}>
-            <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
-            <Text style={[styles.stepText, { color: colors.text }]}>Click "Verify My Account"</Text>
-          </View>
-          <View style={styles.step}>
-            <View style={styles.stepNumber}><Text style={styles.stepNumberText}>4</Text></View>
-            <Text style={[styles.stepText, { color: colors.text }]}>Come back and log in!</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/login')}>
-          <Text style={styles.loginButtonText}>Go to Login</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.resendButton, { borderColor: colors.border }]}
-          onPress={() => {
-            setRegistered(false);
-            setFullName('');
-            setEmail('');
-            setPassword('');
-            setConfirmPassword('');
-          }}
-        >
-          <Text style={[styles.resendButtonText, { color: colors.subtitle }]}>
-            Use a different email
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <Text style={[styles.title, { color: colors.text }]}>Create Account</Text>
-      <Text style={[styles.subtitle, { color: colors.subtitle }]}>Join Nexus today</Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-      {/* Full name */}
-      <Text style={[styles.label, { color: colors.subtitle }]}>Full Name</Text>
-      <TextInput
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-        placeholder="Enter your full name"
-        placeholderTextColor="#999"
-        value={fullName}
-        onChangeText={setFullName}
-        autoCapitalize="words"
-      />
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
+            <Ionicons name="heart-circle-outline" size={48} color="#fff" />
+          </View>
+          <Text style={styles.appName}>Nexus</Text>
+          <Text style={styles.tagline}>Create Your Account</Text>
+        </View>
 
-      {/* Email */}
-      <Text style={[styles.label, { color: colors.subtitle }]}>Email</Text>
-      <TextInput
-        style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-        placeholder="Enter your email"
-        placeholderTextColor="#999"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+        {/* Form */}
+        <View style={styles.form}>
+          <Text style={styles.formTitle}>Sign Up</Text>
+          <Text style={styles.formSubtitle}>Join the Nexus community today</Text>
 
-      {/* Password */}
-      <Text style={[styles.label, { color: colors.subtitle }]}>Password</Text>
-      <View style={[styles.passwordRow, { borderColor: colors.border }]}>
-        <TextInput
-          style={[styles.passwordInput, { color: colors.text }]}
-          placeholder="Enter your password"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#999" />
-        </TouchableOpacity>
-      </View>
+          <Text style={styles.label}>Full Name</Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="person-outline" size={20} color="#008080" />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your full name"
+              placeholderTextColor="#80CBC4"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+            />
+          </View>
 
-      {/* Password strength indicators */}
-      {password.length > 0 && (
-        <View style={styles.strengthBox}>
-          <View style={styles.strengthRow}>
-            <Ionicons name={passwordCheck.hasLength ? 'checkmark-circle' : 'close-circle'} size={16} color={passwordCheck.hasLength ? '#1D9E75' : '#E24B4A'} />
-            <Text style={[styles.strengthText, { color: passwordCheck.hasLength ? '#1D9E75' : '#E24B4A' }]}>At least 8 characters</Text>
+          <Text style={styles.label}>Email Address</Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="mail-outline" size={20} color="#008080" />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#80CBC4"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
           </View>
-          <View style={styles.strengthRow}>
-            <Ionicons name={passwordCheck.hasUppercase ? 'checkmark-circle' : 'close-circle'} size={16} color={passwordCheck.hasUppercase ? '#1D9E75' : '#E24B4A'} />
-            <Text style={[styles.strengthText, { color: passwordCheck.hasUppercase ? '#1D9E75' : '#E24B4A' }]}>One uppercase letter (A-Z)</Text>
+
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="lock-closed-outline" size={20} color="#008080" />
+            <TextInput
+              style={styles.input}
+              placeholder="Min 8 chars, uppercase, number, special"
+              placeholderTextColor="#80CBC4"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#80CBC4"
+              />
+            </TouchableOpacity>
           </View>
-          <View style={styles.strengthRow}>
-            <Ionicons name={passwordCheck.hasLowercase ? 'checkmark-circle' : 'close-circle'} size={16} color={passwordCheck.hasLowercase ? '#1D9E75' : '#E24B4A'} />
-            <Text style={[styles.strengthText, { color: passwordCheck.hasLowercase ? '#1D9E75' : '#E24B4A' }]}>One lowercase letter (a-z)</Text>
+
+          {strength && (
+            <View style={styles.strengthRow}>
+              <View style={[styles.strengthBar, {
+                backgroundColor: strength.color,
+                width: `${((['Weak', 'Fair', 'Good', 'Strong'].indexOf(strength.label) + 1) / 4) * 100}%`
+              }]} />
+              <Text style={[styles.strengthLabel, { color: strength.color }]}>
+                {strength.label}
+              </Text>
+            </View>
+          )}
+
+          <Text style={styles.label}>Confirm Password</Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="lock-closed-outline" size={20} color="#008080" />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm your password"
+              placeholderTextColor="#80CBC4"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirm}
+            />
+            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+              <Ionicons
+                name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#80CBC4"
+              />
+            </TouchableOpacity>
           </View>
-          <View style={styles.strengthRow}>
-            <Ionicons name={passwordCheck.hasNumber ? 'checkmark-circle' : 'close-circle'} size={16} color={passwordCheck.hasNumber ? '#1D9E75' : '#E24B4A'} />
-            <Text style={[styles.strengthText, { color: passwordCheck.hasNumber ? '#1D9E75' : '#E24B4A' }]}>One number (0-9)</Text>
-          </View>
-          <View style={styles.strengthRow}>
-            <Ionicons name={passwordCheck.hasSpecial ? 'checkmark-circle' : 'close-circle'} size={16} color={passwordCheck.hasSpecial ? '#1D9E75' : '#E24B4A'} />
-            <Text style={[styles.strengthText, { color: passwordCheck.hasSpecial ? '#1D9E75' : '#E24B4A' }]}>One special character (@#$%^&+=!)</Text>
+
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.registerButtonText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.loginLink}>Sign In</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      )}
 
-      {/* Confirm Password */}
-      <Text style={[styles.label, { color: colors.subtitle }]}>Confirm Password</Text>
-      <View style={[styles.passwordRow, { borderColor: colors.border }]}>
-        <TextInput
-          style={[styles.passwordInput, { color: colors.text }]}
-          placeholder="Confirm your password"
-          placeholderTextColor="#999"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showConfirm}
-        />
-        <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-          <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={20} color="#999" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Register button */}
-      <TouchableOpacity
-        style={[styles.button, { opacity: isPasswordValid ? 1 : 0.7 }]}
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Create Account</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push('/login')}>
-        <Text style={styles.link}>Already have an account? Sign in</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 28, paddingVertical: 60 },
-  title: { fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  subtitle: { fontSize: 15, marginBottom: 28 },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 12 },
-  input: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 15 },
-  passwordRow: {
+  container: { flex: 1, backgroundColor: '#F0FFF4' },
+  scroll: { flexGrow: 1 },
+  header: {
+    backgroundColor: '#008080',
+    paddingTop: 80, paddingBottom: 40, alignItems: 'center',
+  },
+  logoCircle: {
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+  },
+  appName: { fontSize: 36, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  tagline: { fontSize: 16, color: '#B2EBF2' },
+  form: {
+    flex: 1, backgroundColor: '#F0FFF4',
+    borderTopLeftRadius: 30, borderTopRightRadius: 30,
+    marginTop: -20, padding: 28,
+  },
+  formTitle: {
+    fontSize: 24, fontWeight: '700', color: '#004D40',
+    marginBottom: 6, marginTop: 10,
+  },
+  formSubtitle: { fontSize: 14, color: '#00695C', marginBottom: 24 },
+  label: {
+    fontSize: 14, fontWeight: '600', color: '#004D40',
+    marginBottom: 8, marginTop: 12,
+  },
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#fff', borderRadius: 12,
+    paddingHorizontal: 14, borderWidth: 1, borderColor: '#B2DFDB',
+  },
+  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#004D40' },
+  strengthRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderRadius: 10, paddingHorizontal: 14,
+    gap: 10, marginTop: 6, marginBottom: 4,
   },
-  passwordInput: { flex: 1, paddingVertical: 14, fontSize: 15 },
-  strengthBox: {
-    backgroundColor: '#f9f9f9', borderRadius: 10,
-    padding: 12, marginTop: 8, gap: 6,
+  strengthBar: { height: 4, borderRadius: 2, flex: 1 },
+  strengthLabel: { fontSize: 12, fontWeight: '600', width: 50 },
+  registerButton: {
+    backgroundColor: '#008080', padding: 16,
+    borderRadius: 12, alignItems: 'center',
+    marginTop: 24, marginBottom: 20,
   },
-  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  strengthText: { fontSize: 13 },
-  button: {
-    backgroundColor: '#534AB7', padding: 16,
-    borderRadius: 10, alignItems: 'center', marginTop: 24,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  link: { marginTop: 20, textAlign: 'center', color: '#534AB7', fontSize: 14 },
-  verifyContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28,
-  },
-  verifyIcon: {
-    width: 100, height: 100, borderRadius: 50, backgroundColor: '#ede9ff',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 24,
-  },
-  verifyTitle: { fontSize: 24, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  verifySubtitle: { fontSize: 15, marginBottom: 6, textAlign: 'center' },
-  verifyEmail: { fontSize: 16, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  verifyInfo: { fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  verifySteps: { width: '100%', marginBottom: 32, gap: 12 },
-  step: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  stepNumber: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#534AB7',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  stepNumberText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  stepText: { fontSize: 14, flex: 1 },
-  loginButton: {
-    backgroundColor: '#534AB7', padding: 16, borderRadius: 10,
-    alignItems: 'center', width: '100%', marginBottom: 12,
-  },
-  loginButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  resendButton: {
-    padding: 14, borderRadius: 10, alignItems: 'center',
-    width: '100%', borderWidth: 1,
-  },
-  resendButtonText: { fontSize: 14 },
+  registerButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  loginRow: { flexDirection: 'row', justifyContent: 'center' },
+  loginText: { fontSize: 14, color: '#00695C' },
+  loginLink: { fontSize: 14, color: '#008080', fontWeight: '700' },
 });

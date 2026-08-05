@@ -25,15 +25,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
 
   setAuth: async (token, user) => {
+    // Load saved profile image and attach to user
+    const savedImage = await AsyncStorage.getItem('profileImage');
+    if (savedImage && !user.profileImage) {
+      user.profileImage = savedImage;
+    }
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(user));
     set({ token, user, isAuthenticated: true });
   },
 
   clearAuth: async () => {
+    // Only remove token and user — keep profileImage so it shows on next login!
     await AsyncStorage.removeItem('token');
     await AsyncStorage.removeItem('user');
-    await AsyncStorage.removeItem('profileImage');
     set({ token: null, user: null, isAuthenticated: false });
   },
 
@@ -43,12 +48,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const profileImage = await AsyncStorage.getItem('profileImage');
     if (token && userStr) {
       const user = JSON.parse(userStr);
+      // Always load saved profile image
       if (profileImage) user.profileImage = profileImage;
       set({ token, user, isAuthenticated: true });
     }
   },
 
-  // Save profile image separately so it persists
+  // Save profile image separately so it persists across logout and login
   updateProfileImage: async (imageUrl: string) => {
     await AsyncStorage.setItem('profileImage', imageUrl);
     const user = get().user;
