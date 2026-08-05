@@ -6,8 +6,54 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
+
+// This draws the "N" as an actual shape instead of using the letter "N" from a font.
+// It's two vertical bars (with rounded ends) joined by a diagonal bar, just like the
+// reference logo. The green zig-zag line is drawn separately on top, crossing through
+// the middle of the diagonal, to look like a heartbeat/pulse line.
+function NexusLogo({ size = 78 }: { size?: number }) {
+  // height keeps the same proportions as the reference image (roughly 100 wide x 76 tall)
+  const height = (size * 76) / 100;
+
+  return (
+    <Svg width={size} height={height} viewBox="0 0 100 76">
+      {/* Left vertical bar of the N */}
+      <Path
+        d="M18,8 L18,68"
+        stroke="#7B2FBE"
+        strokeWidth={12}
+        strokeLinecap="round"
+      />
+      {/* Right vertical bar of the N */}
+      <Path
+        d="M82,8 L82,68"
+        stroke="#7B2FBE"
+        strokeWidth={12}
+        strokeLinecap="round"
+      />
+      {/* Diagonal bar connecting them */}
+      <Path
+        d="M18,8 L82,68"
+        stroke="#7B2FBE"
+        strokeWidth={12}
+        strokeLinecap="round"
+      />
+      {/* Green heartbeat/pulse line running straight across, spiking where it
+          crosses the diagonal — same as the reference logo */}
+      <Path
+        d="M4,38 L38,38 L46,20 L54,54 L62,38 L96,38"
+        stroke="#00C853"
+        strokeWidth={5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,13 +67,11 @@ export default function LoginScreen() {
     const status = err?.response?.status;
     const message = (err?.response?.data?.message || '').toLowerCase();
 
-    // Check status codes first
     if (status === 401) return 'Wrong email or password. Please try again!';
     if (status === 403) return 'Your account is not verified. Check your email for the verification link!';
     if (status === 404) return 'Account not found. Please check your email or sign up!';
     if (status === 423) return 'Your account has been disabled. Contact support for help!';
 
-    // Check message keywords
     if (message.includes('disabled')) return 'Your account has been disabled. Contact support for help!';
     if (message.includes('verified')) return 'Please verify your email before logging in. Check your inbox!';
     if (message.includes('password')) return 'Wrong email or password. Please try again!';
@@ -35,7 +79,6 @@ export default function LoginScreen() {
     if (message.includes('invalid')) return 'Wrong email or password. Please try again!';
     if (message.includes('credentials')) return 'Wrong email or password. Please try again!';
 
-    // No response means network issue
     if (!err?.response) return 'No internet connection. Please check your network!';
 
     return 'Could not log in. Please try again!';
@@ -87,11 +130,24 @@ export default function LoginScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="heart-circle-outline" size={48} color="#fff" />
+
+          {/* Logo row — SVG N + EXUS */}
+          <View style={styles.logoRow}>
+            <View style={styles.nLogoWrapper}>
+              <NexusLogo size={78} />
+            </View>
+
+            {/* EXUS */}
+            <Text style={styles.appNameRest}>EXUS</Text>
           </View>
-          <Text style={styles.appName}>Nexus</Text>
-          <Text style={styles.tagline}>Health Companion</Text>
+
+          {/* Slogan */}
+          <View style={styles.taglineRow}>
+            <View style={styles.taglineLine} />
+            <Text style={styles.tagline}>Connecting the World</Text>
+            <View style={styles.taglineLine} />
+          </View>
+
         </View>
 
         {/* Form */}
@@ -188,21 +244,52 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1 },
   header: {
     backgroundColor: '#008080',
-    paddingTop: 80,
-    paddingBottom: 40,
+    paddingTop: 100,
+    paddingBottom: 50,
     alignItems: 'center',
   },
-  logoCircle: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  appName: { fontSize: 36, fontWeight: '800', color: '#fff', marginBottom: 4 },
-  tagline: { fontSize: 16, color: '#B2EBF2' },
+  // Just gives the SVG logo a little breathing room next to the "EXUS" text
+  nLogoWrapper: {
+    marginRight: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appNameRest: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 4,
+    marginLeft: 2,
+    marginTop: 4,
+  },
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  taglineLine: {
+    height: 1,
+    width: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  tagline: {
+    fontSize: 12,
+    color: '#B2EBF2',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
   form: {
-    flex: 1, backgroundColor: '#F0FFF4',
-    borderTopLeftRadius: 30, borderTopRightRadius: 30,
-    marginTop: -20, padding: 28,
+    flex: 1,
+    backgroundColor: '#F0FFF4',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -20,
+    padding: 28,
   },
   formTitle: {
     fontSize: 24, fontWeight: '700', color: '#004D40',
